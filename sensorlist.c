@@ -102,7 +102,31 @@ void sensor_dev_unregister(sensor_dev_t *dev)
 {
     //TODO:please make sure all resources released such as listener,odr
     printf("%s:please make sure all resources released!\n", __func__);
-    list_del_init(&dev->node);
+    uint8_t dflag = 0;
+    sensor_t *sensor, *tmp;
+    sensor_dev_t *d, *dtmp;
+    listener_t *l, *ltmp;
+    odr_t *o, *otmp;
+    list_for_each_entry_safe(sensor, tmp, &sensor_list, node) {
+        list_for_each_entry_safe(d, dtmp, &sensor->dev_list, node) {
+            if (dev == d) {
+                dflag = 1;
+                list_for_each_entry_safe(l, ltmp, &dev->listener_list, node) {
+                    sensor_listener_unregister(l);
+                    goto out;
+                }
+            }
+        }
+    }
+
+out:
+    if (dflag) {
+        list_del_init(&dev->node);
+        free(dev);
+        dev = NULL;
+    } else {
+        printf("failed to find target sensor!\n");
+    }
 }
 
 //TODO:remember to adapt different supported odrs for different sensors
@@ -307,7 +331,7 @@ static int sensor_odr_unregister(sensor_type_t type, uint8_t idx, uint32_t match
     odr_t *o = NULL, *otmp = NULL;
     uint8_t odr_flag = 0, dev_flag = 0;
 
-    //printf("req_odr = %d hz, matched_odr = %d hz\n", req_odr, *matched_odr);
+    printf("matched_odr = %d hz\n", matched_odr);
 
     list_for_each_entry_safe(sensor, tmp, &sensor_list, node) {
         list_for_each_entry_safe(dev, dev_tmp, &sensor->dev_list, node) {
@@ -389,6 +413,7 @@ void sensor_listener_unregister(listener_t *listener)
     sensor_t *sensor = NULL, *tmp = NULL;
     sensor_dev_t *dev = NULL, *dev_tmp = NULL;
     listener_t *l = NULL, *ltmp = NULL;
+    odr_t *o = NULL, *otmp = NULL;
     uint8_t odr_flag = 0, dev_flag = 0, lflag = 0;
 
     list_for_each_entry_safe(sensor, tmp, &sensor_list, node) {
@@ -396,14 +421,19 @@ void sensor_listener_unregister(listener_t *listener)
             list_for_each_entry_safe(l, ltmp, &dev->listener_list, node) {
                 if (l == listener) {
                     lflag = 1;
-                    sensor_odr_unregister(sensor->type, dev->idx, l->matched_odr);
+                    list_for_each_entry_safe(o, otmp, &dev->odr_list, node) {
+                        uint8_t tmp_cnt = o->ref_cnt;
+                        printf("find odr node[ref_cnt = %d, rate = %d]\n", tmp_cnt, o->rate);
+                        for (uint8_t i = 0; i < tmp_cnt; i++) {
+                            sensor_odr_unregister(sensor->type, dev->idx, o->rate);
+                        }
+                    }
                     goto out;
                     //break;
                 }
             }
         }
     }
-
 
 out:
     if (lflag) {
