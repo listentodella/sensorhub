@@ -58,6 +58,7 @@ typedef struct sensor {
     sensor_type_t type;
     struct list_head dev_list;
     struct list_head node;
+    //struct list_head priv_node;
 } sensor_t;
 
 typedef struct sensor_dev {
@@ -68,6 +69,7 @@ typedef struct sensor_dev {
     struct list_head listener_list;
     struct list_head odr_list;
     struct list_head node;
+    //struct list_head priv_node;
 } sensor_dev_t;
 
 typedef struct listener {
@@ -75,30 +77,27 @@ typedef struct listener {
     uint32_t matched_odr;
     struct notifier_block nb;
     struct list_head node;
+    //struct list_head priv_node;
 } listener_t;
 
 typedef struct odr {
     uint8_t ref_cnt;
     uint32_t rate;
     struct list_head node;
+    //struct list_head priv_node;
 } odr_t;
 
 
 void get_sensor_list();
 void supported_sensor_init();
 //int sensor_dev_register(sensor_type_t type, uint8_t idx, sensor_dev_t *dev);
+sensor_dev_t *sensor_allocate_dev(void);
 int sensor_dev_register(sensor_type_t type, sensor_dev_t *dev);
 void sensor_dev_unregister(sensor_dev_t *dev);
 
-
+listener_t *sensor_allocate_listener(void);
 int sensor_listener_register(sensor_type_t type, uint8_t idx, listener_t *listener);
 void sensor_listener_unregister(listener_t *listener);
-
-
-
-
-
-
 
 
 

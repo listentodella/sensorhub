@@ -13,6 +13,9 @@ static int sensor_odr_unregister(sensor_type_t type, uint8_t idx, uint32_t match
 
 
 static LIST_HEAD(sensor_list);
+//static LIST_HEAD(sensor_dev_list);
+//static LIST_HEAD(listener_list);
+//static LIST_HEAD(odr_list);
 
 static sensor_t supported_sensors[] = {
     { .name = "ACC", .type = ACC },
@@ -82,21 +85,46 @@ void supported_sensor_init()
 }
 
 
+sensor_dev_t *sensor_allocate_dev(void)
+{
+    sensor_dev_t *dev = (sensor_dev_t *)calloc(1, sizeof(sensor_dev_t));
+    if (!dev) {
+        printf("%s:failed to allocate device!\n", __func__);
+        goto out;
+    }
+    /* fill members if need */
+    dev->idx = 0;
+    INIT_LIST_HEAD(&dev->listener_list);
+    INIT_LIST_HEAD(&dev->odr_list);
+    INIT_LIST_HEAD(&dev->node);
+
+out:
+    return dev;
+}
+
+
 //int sensor_dev_register(sensor_type_t type, uint8_t idx, sensor_dev_t *dev)
 int sensor_dev_register(sensor_type_t type, sensor_dev_t *dev)
 {
     int ret = -1;
     sensor_t *sensor, *tmp;
+    sensor_dev_t *sensor_dev, *dtmp;
 
     list_for_each_entry_safe(sensor, tmp, &sensor_list, node) {
         if (sensor->type == type) {
+            list_for_each_entry_safe(sensor_dev, dtmp, &sensor->dev_list, node) {
+                if (sensor_dev->idx == dev->idx) {
+                    printf("%s:repeated idx %d for type %d, please check!\n", __func__, dev->idx, type);
+                    goto out;
+                }
+            }
+
             ret = 0;
-            INIT_LIST_HEAD(&dev->listener_list);
-            INIT_LIST_HEAD(&dev->odr_list);
             list_add_tail(&dev->node, &sensor->dev_list);
         }
     }
 
+out:
     return ret;
 }
 
@@ -390,6 +418,22 @@ out_find_odr:
 out:
     return ret;
 }
+
+listener_t *sensor_allocate_listener(void)
+{
+    listener_t *l = (listener_t *)calloc(1, sizeof(listener_t));
+    if (!l) {
+        printf("%s:failed to allocate listener!\n", __func__);
+        goto out;
+    }
+    /* fill members if need */
+    l->req_odr = 0;
+    l->matched_odr = 0;
+
+out:
+    return l;
+}
+
 
 
 int sensor_listener_register(sensor_type_t type, uint8_t idx, listener_t *listener)

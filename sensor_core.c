@@ -9,7 +9,6 @@
 #include "sensor.h"
 
 
-
 #define SIGN_OF_INT8(x) (1 | ((x) >> 7))
 void sensor_axis_map_init(axis_map_t *axis_map, uint8_t *axis_cfg_data)
 {
