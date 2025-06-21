@@ -1,13 +1,16 @@
 [package]
-name = "sensorhub"
+name = "sensorhub-rs"
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 license = "MIT"
+description = "A Rust library for embedded MCUs to communicate with PC hosts, enabling rapid prototyping and validation of various sensors."
+readme = "README.md"
+keywords = ["sensor", "hub", "embedded",  "communication", "prototype"]
+categories = ["embedded"]
 
 [dependencies]
 prost = "0.14.1"
 prost-types = "0.14.1"
-
 
 [build-dependencies]
 prost-build = "0.14.1"
