@@ -6,58 +6,53 @@
 // developers may choose to define Sensor-specific message API for any
 // new/Sensor-specific functionality.
 //
-// Copyright (c) 2016-2018 Qualcomm Technologies, Inc.
-// All Rights Reserved.
-// Confidential and Proprietary - Qualcomm Technologies, Inc.
 
 syntax = "proto3";
 package sns_std_sensor;
 // import "nanopb.proto";
 
-enum sns_std_sensor_msgid
-{
-  SNS_STD_SENSOR_MSGID_RESERVED = 0;
-  // option (nanopb_enumopt).long_names = false;
+enum sns_std_sensor_msgid {
+    SNS_STD_SENSOR_MSGID_RESERVED = 0;
+    // option (nanopb_enumopt).long_names = false;
 
-  // Uses message: sns_std_sensor_config
-  // Purpose:
-  //   1. A stream request from a client to a sensor.
-  //   2. A config/ack event from a sensor to the client.
-  SNS_STD_SENSOR_MSGID_SNS_STD_SENSOR_CONFIG = 513;
+    // Uses message: sns_std_sensor_config
+    // Purpose:
+    //   1. A stream request from a client to a sensor.
+    //   2. A config/ack event from a sensor to the client.
+    SNS_STD_SENSOR_MSGID_SNS_STD_SENSOR_CONFIG = 513;
 
-  // Does not use any message body.
-  // Purpose:
-  //   1. An enable request from a client to an on-change sensor.
-  //      Subsequent request from same client will be treated as NOP
-  //   2. A config/ack event from an on-change sensor to the client.
-  SNS_STD_SENSOR_MSGID_SNS_STD_ON_CHANGE_CONFIG  = 514;
+    // Does not use any message body.
+    // Purpose:
+    //   1. An enable request from a client to an on-change sensor.
+    //      Subsequent request from same client will be treated as NOP
+    //   2. A config/ack event from an on-change sensor to the client.
+    SNS_STD_SENSOR_MSGID_SNS_STD_ON_CHANGE_CONFIG = 514;
 
-  // Uses message: sns_std_sensor_physical_config_event
-  // Purpose: A configuration event from a Physical Sensor (streaming and event)
-  //          to the client.
-  SNS_STD_SENSOR_MSGID_SNS_STD_SENSOR_PHYSICAL_CONFIG_EVENT = 768;
+    // Uses message: sns_std_sensor_physical_config_event
+    // Purpose: A configuration event from a Physical Sensor (streaming and event)
+    //          to the client.
+    SNS_STD_SENSOR_MSGID_SNS_STD_SENSOR_PHYSICAL_CONFIG_EVENT = 768;
 
-  // Uses message: sns_std_sensor_event
-  // Purpose: A data event from a Sensor.
-  SNS_STD_SENSOR_MSGID_SNS_STD_SENSOR_EVENT = 1025;
+    // Uses message: sns_std_sensor_event
+    // Purpose: A data event from a Sensor.
+    SNS_STD_SENSOR_MSGID_SNS_STD_SENSOR_EVENT = 1025;
 }
 
 // Status for each sensor sample
-enum sns_std_sensor_sample_status
-{
-  //option (nanopb_enumopt).long_names = false;
+enum sns_std_sensor_sample_status {
+    //option (nanopb_enumopt).long_names = false;
 
-  // Sample is unreliable.
-  SNS_STD_SENSOR_SAMPLE_STATUS_UNRELIABLE = 0;
+    // Sample is unreliable.
+    SNS_STD_SENSOR_SAMPLE_STATUS_UNRELIABLE = 0;
 
-  // Sample is low accuracy.
-  SNS_STD_SENSOR_SAMPLE_STATUS_ACCURACY_LOW = 1;
+    // Sample is low accuracy.
+    SNS_STD_SENSOR_SAMPLE_STATUS_ACCURACY_LOW = 1;
 
-  // Sample is medium accuracy.
-  SNS_STD_SENSOR_SAMPLE_STATUS_ACCURACY_MEDIUM = 2;
+    // Sample is medium accuracy.
+    SNS_STD_SENSOR_SAMPLE_STATUS_ACCURACY_MEDIUM = 2;
 
-  // Sample is high accuracy.
-  SNS_STD_SENSOR_SAMPLE_STATUS_ACCURACY_HIGH = 3;
+    // Sample is high accuracy.
+    SNS_STD_SENSOR_SAMPLE_STATUS_ACCURACY_HIGH = 3;
 }
 
 // Attribute IDs available for use by Sensors
@@ -69,255 +64,252 @@ enum sns_std_sensor_sample_status
 // 0-511 : Held for sns_std_sensor_attr_id
 // 512-1023 : Reserved for internal QTI use
 // 1024-1535 : Available for use by Sensor developers
-enum sns_std_sensor_attr_id
-{
-  // option (nanopb_enumopt).long_names = false;
+enum sns_std_sensor_attr_id {
+    // option (nanopb_enumopt).long_names = false;
 
-  // REQUIRED
-  // String
-  // Human-readable sensor name
-  SNS_STD_SENSOR_ATTRID_NAME = 0;
+    // REQUIRED
+    // String
+    // Human-readable sensor name
+    SNS_STD_SENSOR_ATTRID_NAME = 0;
 
-  // REQUIRED
-  // String
-  // Human-readable vendor name
-  SNS_STD_SENSOR_ATTRID_VENDOR = 1;
+    // REQUIRED
+    // String
+    // Human-readable vendor name
+    SNS_STD_SENSOR_ATTRID_VENDOR = 1;
 
-  // REQUIRED
-  // String
-  // Data Type used by this Sensor
-  SNS_STD_SENSOR_ATTRID_TYPE = 2;
+    // REQUIRED
+    // String
+    // Data Type used by this Sensor
+    SNS_STD_SENSOR_ATTRID_TYPE = 2;
 
-  // REQUIRED
-  // Boolean
-  // Whether this Sensor is available for clients
-  SNS_STD_SENSOR_ATTRID_AVAILABLE = 3;
+    // REQUIRED
+    // Boolean
+    // Whether this Sensor is available for clients
+    SNS_STD_SENSOR_ATTRID_AVAILABLE = 3;
 
-  // REQUIRED
-  // Integer
-  // Sensor version
-  SNS_STD_SENSOR_ATTRID_VERSION = 4;
+    // REQUIRED
+    // Integer
+    // Sensor version
+    SNS_STD_SENSOR_ATTRID_VERSION = 4;
 
-  // REQUIRED
-  // [String]
-  // .proto files specifying the incoming request and outgoing event messages
-  SNS_STD_SENSOR_ATTRID_API = 5;
+    // REQUIRED
+    // [String]
+    // .proto files specifying the incoming request and outgoing event messages
+    SNS_STD_SENSOR_ATTRID_API = 5;
 
-  // OPTIONAL
-  // [Float]
-  // Supported sample rates in Hz
-  SNS_STD_SENSOR_ATTRID_RATES = 6;
+    // OPTIONAL
+    // [Float]
+    // Supported sample rates in Hz
+    SNS_STD_SENSOR_ATTRID_RATES = 6;
 
-  // OPTIONAL
-  // [Float]
-  // Supported resolutions
-  SNS_STD_SENSOR_ATTRID_RESOLUTIONS = 7;
+    // OPTIONAL
+    // [Float]
+    // Supported resolutions
+    SNS_STD_SENSOR_ATTRID_RESOLUTIONS = 7;
 
-  // OPTIONAL
-  // Integer
-  // Supported FIFO depth in number of samples
-  SNS_STD_SENSOR_ATTRID_FIFO_SIZE = 8;
+    // OPTIONAL
+    // Integer
+    // Supported FIFO depth in number of samples
+    SNS_STD_SENSOR_ATTRID_FIFO_SIZE = 8;
 
-  // OPTIONAL
-  // [Integer]
-  // Active currents in uA for all sns_attr_op_modes. Length of the array
-  // of active currents must match the length of the array of operation modes.
-  SNS_STD_SENSOR_ATTRID_ACTIVE_CURRENT = 9;
+    // OPTIONAL
+    // [Integer]
+    // Active currents in uA for all sns_attr_op_modes. Length of the array
+    // of active currents must match the length of the array of operation modes.
+    SNS_STD_SENSOR_ATTRID_ACTIVE_CURRENT = 9;
 
-  // OPTIONAL
-  // Integer
-  // Inactive current in uA
-  SNS_STD_SENSOR_ATTRID_SLEEP_CURRENT = 10;
+    // OPTIONAL
+    // Integer
+    // Inactive current in uA
+    SNS_STD_SENSOR_ATTRID_SLEEP_CURRENT = 10;
 
-  // OPTIONAL
-  // [{float,float}]
-  // Supported operating ranges
-  SNS_STD_SENSOR_ATTRID_RANGES = 11;
+    // OPTIONAL
+    // [{float,float}]
+    // Supported operating ranges
+    SNS_STD_SENSOR_ATTRID_RANGES = 11;
 
-  // OPTIONAL
-  // String
-  // Operating Modes ("LPM", "HIGH_PERF", "NORMAL", "OFF")
-  SNS_STD_SENSOR_ATTRID_OP_MODES = 12;
+    // OPTIONAL
+    // String
+    // Operating Modes ("LPM", "HIGH_PERF", "NORMAL", "OFF")
+    SNS_STD_SENSOR_ATTRID_OP_MODES = 12;
 
-  // OPTIONAL
-  // Boolean
-  // Boolean: Whether the Sensor supports Data Ready Interrupt (DRI).
-  SNS_STD_SENSOR_ATTRID_DRI = 13;
+    // OPTIONAL
+    // Boolean
+    // Boolean: Whether the Sensor supports Data Ready Interrupt (DRI).
+    SNS_STD_SENSOR_ATTRID_DRI = 13;
 
-  // OPTIONAL
-  // Boolean
-  // Whether a Sensor support synchronized streaming.
-  SNS_STD_SENSOR_ATTRID_STREAM_SYNC = 14;
+    // OPTIONAL
+    // Boolean
+    // Whether a Sensor support synchronized streaming.
+    SNS_STD_SENSOR_ATTRID_STREAM_SYNC = 14;
 
-  // OPTIONAL
-  // Integer
-  // Encoded message size of the data event generated most often by the Sensor
-  SNS_STD_SENSOR_ATTRID_EVENT_SIZE = 15;
+    // OPTIONAL
+    // Integer
+    // Encoded message size of the data event generated most often by the Sensor
+    SNS_STD_SENSOR_ATTRID_EVENT_SIZE = 15;
 
-  // REQUIRED
-  // Integer: sns_std_sensor_stream_type
-  // Streaming Type
-  SNS_STD_SENSOR_ATTRID_STREAM_TYPE = 16;
+    // REQUIRED
+    // Integer: sns_std_sensor_stream_type
+    // Streaming Type
+    SNS_STD_SENSOR_ATTRID_STREAM_TYPE = 16;
 
-  // OPTIONAL
-  // Boolean
-  // Whether this Sensor is dynamic (connected/disconnected at runtime)
-  SNS_STD_SENSOR_ATTRID_DYNAMIC = 17;
+    // OPTIONAL
+    // Boolean
+    // Whether this Sensor is dynamic (connected/disconnected at runtime)
+    SNS_STD_SENSOR_ATTRID_DYNAMIC = 17;
 
-  // OPTIONAL
-  // Integer
-  // When multiple Sensors of the same hardware exist, this attribute differentiates.
-  SNS_STD_SENSOR_ATTRID_HW_ID = 18;
+    // OPTIONAL
+    // Integer
+    // When multiple Sensors of the same hardware exist, this attribute differentiates.
+    SNS_STD_SENSOR_ATTRID_HW_ID = 18;
 
-  // OPTIONAL
-  // Integer: sns_std_sensor_rigid_body_type
-  // The rigid body on which the Sensor is placed.
-  SNS_STD_SENSOR_ATTRID_RIGID_BODY = 19;
+    // OPTIONAL
+    // Integer: sns_std_sensor_rigid_body_type
+    // The rigid body on which the Sensor is placed.
+    SNS_STD_SENSOR_ATTRID_RIGID_BODY = 19;
 
-  // OPTIONAL
-  // float[12]
-  // Location and orientation of sensor element in the device frame.
-  SNS_STD_SENSOR_ATTRID_PLACEMENT = 20;
+    // OPTIONAL
+    // float[12]
+    // Location and orientation of sensor element in the device frame.
+    SNS_STD_SENSOR_ATTRID_PLACEMENT = 20;
 
-  // OPTIONAL
-  // Boolean
-  // Boolean: True for a physical sensor
-  SNS_STD_SENSOR_ATTRID_PHYSICAL_SENSOR = 21;
+    // OPTIONAL
+    // Boolean
+    // Boolean: True for a physical sensor
+    SNS_STD_SENSOR_ATTRID_PHYSICAL_SENSOR = 21;
 
-  // OPTIONAL
-  // [Integer]
-  // List of supported self-test types from sns_physical_sensor_test_type.
-  SNS_STD_SENSOR_ATTRID_PHYSICAL_SENSOR_TESTS = 22;
+    // OPTIONAL
+    // [Integer]
+    // List of supported self-test types from sns_physical_sensor_test_type.
+    SNS_STD_SENSOR_ATTRID_PHYSICAL_SENSOR_TESTS = 22;
 
-  // OPTIONAL
-  // Float
-  // Sensors chosen resolution in it's engineering units.
-  SNS_STD_SENSOR_ATTRID_SELECTED_RESOLUTION = 23;
+    // OPTIONAL
+    // Float
+    // Sensors chosen resolution in it's engineering units.
+    SNS_STD_SENSOR_ATTRID_SELECTED_RESOLUTION = 23;
 
-  // OPTIONAL
-  // float[2]
-  // Sensors chosen {min, max} range in it's engineering units.
-  SNS_STD_SENSOR_ATTRID_SELECTED_RANGE = 24;
+    // OPTIONAL
+    // float[2]
+    // Sensors chosen {min, max} range in it's engineering units.
+    SNS_STD_SENSOR_ATTRID_SELECTED_RANGE = 24;
 
-  // OPTIONAL
-  // [float]
-  // List of additional sample rates for low latency clients in Hz.
-  // These are additional rates for low latency clients extended from list
-  // of rates published in attribute SNS_STD_SENSOR_ATTRID_RATES.
-  // This is supported for internal clients only. External clients shall not use this API.
-  SNS_STD_SENSOR_ATTRID_ADDITIONAL_LOW_LATENCY_RATES = 25;
-  
-  // OPTIONAL
-  // Boolean
-  // Boolean: True if the sensor supports passive request, False otherwise.
-  // If this attribute is not supported, then the sensor does not support passive requests.
-  // Sensors that do not support passive requests, will service all requests as active requests.
-  SNS_STD_SENSOR_ATTRID_PASSIVE_REQUEST = 26;
+    // OPTIONAL
+    // [float]
+    // List of additional sample rates for low latency clients in Hz.
+    // These are additional rates for low latency clients extended from list
+    // of rates published in attribute SNS_STD_SENSOR_ATTRID_RATES.
+    // This is supported for internal clients only. External clients shall not use this API.
+    SNS_STD_SENSOR_ATTRID_ADDITIONAL_LOW_LATENCY_RATES = 25;
+
+    // OPTIONAL
+    // Boolean
+    // Boolean: True if the sensor supports passive request, False otherwise.
+    // If this attribute is not supported, then the sensor does not support passive requests.
+    // Sensors that do not support passive requests, will service all requests as active requests.
+    SNS_STD_SENSOR_ATTRID_PASSIVE_REQUEST = 26;
 }
 
 // Sensor stream configuration request
 // or configuration change message
 message sns_std_sensor_config
 {
-  // Sample rate in Hz.
-  optional float sample_rate = 1;
+    // Sample rate in Hz.
+    optional float sample_rate = 1;
 }
 
 // Sensor data event
 message sns_std_sensor_event
 {
-  // Output data field for all Sensor.
-  repeated float data = 1;
+    // Output data field for all Sensor.
+    repeated float data = 1;
 
-  // Event sample status.[default = SNS_STD_SENSOR_SAMPLE_STATUS_UNRELIABLE]
-  optional sns_std_sensor_sample_status status = 2 ;
+    // Event sample status.[default = SNS_STD_SENSOR_SAMPLE_STATUS_UNRELIABLE]
+    optional sns_std_sensor_sample_status status = 2;
 }
 
 // Stream types
-enum sns_std_sensor_stream_type
-{
-  // option (nanopb_enumopt).long_names = false;
+enum sns_std_sensor_stream_type {
+    // option (nanopb_enumopt).long_names = false;
 
-  // Used for Sensors that report data periodically.
-  // Example: accel, gyro, mag
-  SNS_STD_SENSOR_STREAM_TYPE_STREAMING = 0;
+    // Used for Sensors that report data periodically.
+    // Example: accel, gyro, mag
+    SNS_STD_SENSOR_STREAM_TYPE_STREAMING = 0;
 
-  // Used for Sensors that report data only on change in value.
-  // Example: proximity, hall
-  SNS_STD_SENSOR_STREAM_TYPE_ON_CHANGE = 1;
+    // Used for Sensors that report data only on change in value.
+    // Example: proximity, hall
+    SNS_STD_SENSOR_STREAM_TYPE_ON_CHANGE = 1;
 
-  // Used for Sensors that have a single data event in reponse to a request.
-  // Example: SUID, motion detect
-  SNS_STD_SENSOR_STREAM_TYPE_SINGLE_OUTPUT = 2;
+    // Used for Sensors that have a single data event in response to a request.
+    // Example: SUID, motion detect
+    SNS_STD_SENSOR_STREAM_TYPE_SINGLE_OUTPUT = 2;
 }
 
 // Rigid body types
-enum sns_std_sensor_rigid_body_type
-{
-  //option (nanopb_enumopt).long_names = false;
+enum sns_std_sensor_rigid_body_type {
+    //option (nanopb_enumopt).long_names = false;
 
-  // Used for a Sensor mounted on the same rigid body as the display.
-  SNS_STD_SENSOR_RIGID_BODY_TYPE_DISPLAY = 0;
+    // Used for a Sensor mounted on the same rigid body as the display.
+    SNS_STD_SENSOR_RIGID_BODY_TYPE_DISPLAY = 0;
 
-  // Used for a Sensor mounted on the same rigid body as a keyboard.
-  SNS_STD_SENSOR_RIGID_BODY_TYPE_KEYBOARD = 1;
+    // Used for a Sensor mounted on the same rigid body as a keyboard.
+    SNS_STD_SENSOR_RIGID_BODY_TYPE_KEYBOARD = 1;
 
-  // Used for a Sensor that is mounted on an external device.
-  SNS_STD_SENSOR_RIGID_BODY_TYPE_EXTERNAL = 2;
+    // Used for a Sensor that is mounted on an external device.
+    SNS_STD_SENSOR_RIGID_BODY_TYPE_EXTERNAL = 2;
 }
 
 // Sensor stream configuration event
 message sns_std_sensor_config_event
 {
-  // Current sample rate in Hz
-  optional float sample_rate = 1;
+    // Current sample rate in Hz
+    optional float sample_rate = 1;
 }
 
 // Physical sensor stream configuration. This message reflects the current
 // configuration of the physical sensor.
 message sns_std_sensor_physical_config_event
 {
-  // Current sample rate in Hz for streaming sensors or highest rate of value
-  // change for on-change sensors. 0 if sensor is disabled.
-  // Note: if stream will be synchronized via S4S or I3C, this is the sample
-  // rate after synchronization is complete.
-  optional float sample_rate = 1;
+    // Current sample rate in Hz for streaming sensors or highest rate of value
+    // change for on-change sensors. 0 if sensor is disabled.
+    // Note: if stream will be synchronized via S4S or I3C, this is the sample
+    // rate after synchronization is complete.
+    optional float sample_rate = 1;
 
-  // Current hardware water mark setting. 1 if FIFO not in use.
-  optional uint32 water_mark = 2;
+    // Current hardware water mark setting. 1 if FIFO not in use.
+    optional uint32 water_mark = 2;
 
-  // Sensor sample value min and max range
-  //[(nanopb).max_count = 2];
-  repeated float range = 3 ;
+    // Sensor sample value min and max range
+    //[(nanopb).max_count = 2];
+    repeated float range = 3;
 
-  // Sensor sample value Resolution
-  optional float resolution = 4;
+    // Sensor sample value Resolution
+    optional float resolution = 4;
 
-  // Sensor operation mode
-  // If all requests to the sensor are passive then it shall use
-  // operating_mode = "OFF"
-  optional string operation_mode = 5;
+    // Sensor operation mode
+    // If all requests to the sensor are passive then it shall use
+    // operating_mode = "OFF"
+    optional string operation_mode = 5;
 
-  // Sensor active current in uA
-  optional uint32 active_current = 6;
+    // Sensor active current in uA
+    optional uint32 active_current = 6;
 
-  // Sensor streaming is synchronized via methods like S4S and/or I3C.
-  // Note: if the stream is not yet synchronized, this field should be
-  // false, and an additional config event sent with stream_is_synchronous
-  // set to true once the clocks have been synchronized.
-  optional bool stream_is_synchronous = 7;
+    // Sensor streaming is synchronized via methods like S4S and/or I3C.
+    // Note: if the stream is not yet synchronized, this field should be
+    // false, and an additional config event sent with stream_is_synchronous
+    // set to true once the clocks have been synchronized.
+    optional bool stream_is_synchronous = 7;
 
-  // Sensor has enabled Data Ready Interrupt
-  optional bool dri_enabled = 8;
+    // Sensor has enabled Data Ready Interrupt
+    optional bool dri_enabled = 8;
 
-  // Current DAE water mark setting. 0 if non-DAE sensor.
-  optional uint32 DAE_watermark = 9;
+    // Current DAE water mark setting. 0 if non-DAE sensor.
+    optional uint32 DAE_watermark = 9;
 
-  // The sync anchor is only valid for polled or synchronized sensors.
-  // It is a timestamp of a future (or past) sns_std_sensor_event.
-  // For synchronous sensors: this may be used by clients to determine the
-  // synchronized timeline before it is synchronized.
-  optional uint64 sync_ts_anchor = 10;
+    // The sync anchor is only valid for polled or synchronized sensors.
+    // It is a timestamp of a future (or past) sns_std_sensor_event.
+    // For synchronous sensors: this may be used by clients to determine the
+    // synchronized timeline before it is synchronized.
+    optional uint64 sync_ts_anchor = 10;
 }
 
 // Attribute requirements:
