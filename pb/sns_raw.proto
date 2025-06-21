@@ -1,0 +1,33 @@
+// To set/get registers directly to/from the target sensor.
+// This is not recommended for normal use, but can be useful for debugging, quick verification, or Generic Sensor Control
+
+syntax = "proto3";
+package sns_raw;
+
+enum sns_raw_register_op {
+    // NOP operation
+    SNS_RAW_REGISTER_OP_NOP = 0;
+
+    // Read from a register
+    SNS_RAW_REGISTER_OP_READ = 1;
+
+    // Write to a register
+    SNS_RAW_REGISTER_OP_WRITE = 2;
+}
+
+message sns_raw_register_req
+{
+    optional sns_raw_register_op op = 1; // Operation to perform on the register
+
+    optional uint32 addr_len = 2; // Length of the address in bytes
+    optional uint32 data_len = 3; // Length of the data in bytes
+    // Duration in microseconds for which the register operation should be performed
+    optional uint64 duration = 4;
+    optional uint32 addr     = 5; // Register address
+    optional bytes  data     = 6; // Register data to be written or read
+}
+
+message sns_raw_register_sequence_req
+{
+    repeated sns_raw_register_req reqs = 1; // Sequence of register requests
+}
