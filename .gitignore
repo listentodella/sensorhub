@@ -1,3 +1,4 @@
 # 自动生成的protobuf文件
 src/pb/*.rs
 !src/pb/mod.rs
+target/

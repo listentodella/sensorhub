@@ -230,15 +230,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proto-only"
-version = "0.1.0"
-dependencies = [
- "prost",
- "prost-build",
- "prost-types",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -293,6 +284,15 @@ dependencies = [
  "libc",
  "linux-raw-sys",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "sensorhub"
+version = "0.1.0"
+dependencies = [
+ "prost",
+ "prost-build",
+ "prost-types",
 ]
 
 [[package]]
