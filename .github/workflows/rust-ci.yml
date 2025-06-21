@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+
 jobs:
   build-and-test:
     name: Rust Project Check
@@ -18,7 +19,7 @@ jobs:
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           components: rustfmt, clippy
           override: true
 
@@ -42,7 +43,7 @@ jobs:
         run: cargo test --verbose
 
       - name: Check formatting
-        run: cargo fmt --all --check
+        run: cargo fmt --all -- --check
 
       - name: Lint with clippy
         run: cargo clippy -- -D warnings
