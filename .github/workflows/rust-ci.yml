@@ -34,6 +34,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
 
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+
+      - name: Generate protobuf
+        run: cargo build --verbose --manifest-path=./build.rs
+      
       - name: Build
         run: cargo build --verbose
 
