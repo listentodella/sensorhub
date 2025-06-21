@@ -1,0 +1,47 @@
+
+syntax = "proto3";
+package sns_suid;
+//import "nanopb.proto";
+import "sns_std_type.proto";
+
+enum sns_suid_msgid {
+  // option (nanopb_enumopt).long_names = false;
+  SNS_SUID_MSGID_SNS_SUID_REQ = 0;
+  SNS_SUID_MSGID_SNS_SUID_EVENT = 1;
+}
+
+// Well-known SUID for use by all clients.
+// All other Sensor UIDs must be discovered dynamically
+message sns_suid_sensor {
+  //[default = 0xabababababababab];
+  fixed64 suid_low = 1;
+  //[default = 0xabababababababab];
+  fixed64 suid_high = 2 ;
+}
+
+// Request sent by internal or external client for the list of SUIDs that
+// advertise the specified Data Type
+// Note: Additional requests arriving on the same connection, will not result
+// in a replaced request, but instead the new request will be appended to any
+// active registrations.
+message sns_suid_req {
+  optional string data_type = 1;
+  // Register for updates to the list of SUIDs advertising data_type
+  optional bool register_updates = 2;
+
+  // Each datatype has one sensor configured to be "default". If following
+  // field is set to true, only the SUID of the default sensor will be
+  // sent via the suid event
+  //[default = true];
+  optional bool default_only = 3;
+}
+
+// Event specifying the list of SUIDs associated with the given Data Type
+// Receipt of this event indicates that a change to this list has occurred
+// since the previous event.
+message sns_suid_event {
+  optional string data_type = 1;
+  // pb3中, 如果源的proto使用了package, 则上面单纯import是不够的
+  // 使用时要完整的层级
+  repeated sns_std_type.sns_std_suid suid = 2;
+}
