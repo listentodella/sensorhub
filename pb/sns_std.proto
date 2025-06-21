@@ -12,7 +12,8 @@ import public "sns_std_type.proto";
 
 // Framework-defined message IDs:
 enum sns_std_msgid {
-    SNS_STD_MSGID_SNS_STD_RESERVED = 0;
+    // reserved message ID for pb3
+    SNS_STD_MSGID_RESERVED = 0;
 
     // option (nanopb_enumopt).long_names = false;
 

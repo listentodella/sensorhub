@@ -12,6 +12,7 @@ package sns_std_sensor;
 // import "nanopb.proto";
 
 enum sns_std_sensor_msgid {
+    // Reserved message ID for pb3
     SNS_STD_SENSOR_MSGID_RESERVED = 0;
     // option (nanopb_enumopt).long_names = false;
 

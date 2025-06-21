@@ -11,7 +11,7 @@ fn main() {
             }
         })
         .collect();
-    println!("find protos: {:?}", protos);
+    // println!("find protos: {:?}", protos);
 
     prost_build::Config::new()
         .out_dir("src/pb")
