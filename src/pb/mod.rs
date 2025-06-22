@@ -56,5 +56,11 @@ mod tests {
         );
         assert_eq!(write_seq.reqs[0].data, Some(vec![0x01, 0x02]));
         assert_eq!(write_seq.reqs[0].data_len, Some(2));
+
+        let mut rsp = sns_raw::SnsRawRegisterRsp::default();
+        rsp.data.push(0x01);
+        rsp.data.push(0x02);
+        println!("Read response: {rsp:#x?}");
+        assert_ne!(rsp.data, vec![0x01, 0x02, 0x03]);
     }
 }
