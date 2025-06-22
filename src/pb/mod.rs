@@ -5,9 +5,46 @@ pub mod sns_std_sensor;
 pub mod sns_std_type;
 pub mod sns_suid;
 
+// magic + len + payload + crc
+// 2B + 2B + N + 2B
+// use USB CRC16
+fn crc16(data: &[u8]) -> u16 {
+    crc::Crc::<u16>::new(&crc::CRC_16_USB).checksum(data)
+}
+
+pub fn build_packet(payload: &[u8]) -> Vec<u8> {
+    let mut packet = vec![0xAA, 0x55];
+    let len = payload.len() as u16;
+    packet.extend_from_slice(&len.to_le_bytes());
+    packet.extend_from_slice(payload);
+    let crc = crc16(&packet);
+    packet.extend_from_slice(&crc.to_le_bytes());
+    packet
+}
+
+pub fn parse_packet(buf: &[u8]) -> Option<&[u8]> {
+    if buf.len() < 6 {
+        return None;
+    }
+    if buf[0..2] != [0xAA, 0x55] {
+        return None;
+    }
+    let len = u16::from_le_bytes([buf[2], buf[3]]) as usize;
+    if buf.len() < 4 + len + 2 {
+        return None;
+    }
+    let crc = u16::from_le_bytes([buf[4 + len], buf[5 + len]]);
+    if crc16(&buf[0..4 + len]) != crc {
+        return None;
+    }
+    Some(&buf[4..4 + len])
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::pb::sns_raw;
+    use prost::Message;
+
+    use crate::pb::{build_packet, parse_packet, sns_raw};
     #[test]
     fn sns_raw_test() {
         let mut read_seq = sns_raw::SnsRawRegisterSequenceReq::default();
@@ -65,7 +102,7 @@ mod tests {
     }
 
     #[test]
-    fn sns_raw_mock_tx_rx_test() {
+    fn sns_raw_mock_tx_rx_channel_test() {
         use std::sync::mpsc;
         use std::thread;
 
@@ -89,6 +126,85 @@ mod tests {
                 assert_eq!(req.op, Some(sns_raw::SnsRawRegisterOp::Read as i32));
                 assert_eq!(req.addr, Some(0x10));
                 assert_eq!(req.data, Some(vec![0x00]));
+            } else {
+                panic!("Failed to receive request");
+            }
+        });
+
+        sender.join().expect("Sender thread panicked");
+        receiver.join().expect("Receiver thread panicked");
+    }
+
+    #[test]
+    fn sns_raw_mock_tx_rx_test() {
+        use std::sync::mpsc;
+        use std::thread;
+
+        let (tx, rx) = mpsc::channel();
+        // sender thread
+        let sender = thread::spawn(move || {
+            let req = sns_raw::SnsRawRegisterReq {
+                op: Some(sns_raw::SnsRawRegisterOp::Write as i32),
+                addr_len: Some(1),
+                data_len: Some(2),
+                duration: Some(1000),
+                addr: Some(0x10),
+                data: Some(vec![0x01, 0x02]),
+            };
+            let mut buf = Vec::new();
+            req.encode(&mut buf).unwrap();
+            tx.send(buf).expect("send failed!");
+        });
+        // receiver thread
+        let receiver = thread::spawn(move || {
+            if let Ok(buf) = rx.recv() {
+                let req = sns_raw::SnsRawRegisterReq::decode(&buf[..]).unwrap();
+                println!("Recv req(encoded): {req:?}");
+                assert_eq!(req.op, Some(sns_raw::SnsRawRegisterOp::Write as i32));
+                assert_eq!(req.addr, Some(0x10));
+                assert_eq!(req.data, Some(vec![0x01, 0x02]));
+            } else {
+                panic!("Failed to receive request");
+            }
+        });
+
+        sender.join().expect("Sender thread panicked");
+        receiver.join().expect("Receiver thread panicked");
+    }
+
+    #[test]
+    fn sns_raw_mock_crc_tx_rx_test() {
+        use std::sync::mpsc;
+        use std::thread;
+
+        let (tx, rx) = mpsc::channel();
+        // sender thread
+        let sender = thread::spawn(move || {
+            let req = sns_raw::SnsRawRegisterReq {
+                op: Some(sns_raw::SnsRawRegisterOp::Write as i32),
+                addr_len: Some(1),
+                data_len: Some(2),
+                duration: Some(1000),
+                addr: Some(0x10),
+                data: Some(vec![0x01, 0x02]),
+            };
+            let mut buf = Vec::new();
+            req.encode(&mut buf).unwrap();
+            let buf = build_packet(&buf);
+            tx.send(buf).expect("send failed!");
+        });
+        // receiver thread
+        let receiver = thread::spawn(move || {
+            if let Ok(buf) = rx.recv() {
+                if let Some(payload) = parse_packet(&buf) {
+                    let req = sns_raw::SnsRawRegisterReq::decode(payload).unwrap();
+                    println!("Recv req(encoded+crc): {req:?}");
+                    assert_eq!(req.op, Some(sns_raw::SnsRawRegisterOp::Write as i32));
+                    assert_eq!(req.addr, Some(0x10));
+                    assert_eq!(req.data, Some(vec![0x01, 0x02]));
+                } else {
+                    panic!("Failed to parse packet");
+                }
             } else {
                 panic!("Failed to receive request");
             }

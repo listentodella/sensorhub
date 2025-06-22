@@ -9,6 +9,7 @@ keywords = ["sensor", "hub", "embedded",  "communication", "prototype"]
 categories = ["embedded"]
 
 [dependencies]
+crc = "3.3.0"
 prost = "0.14.1"
 prost-types = "0.14.1"
 
