@@ -63,4 +63,38 @@ mod tests {
         println!("Read response: {rsp:#x?}");
         assert_ne!(rsp.data, vec![0x01, 0x02, 0x03]);
     }
+
+    #[test]
+    fn sns_raw_mock_tx_rx_test() {
+        use std::sync::mpsc;
+        use std::thread;
+
+        let (tx, rx) = mpsc::channel();
+        // sender thread
+        let sender = thread::spawn(move || {
+            let req = sns_raw::SnsRawRegisterReq {
+                op: Some(sns_raw::SnsRawRegisterOp::Read as i32),
+                addr_len: Some(1),
+                data_len: Some(1),
+                duration: Some(1000),
+                addr: Some(0x10),
+                data: Some(vec![0x00]),
+            };
+            tx.send(req).expect("send failed!");
+        });
+        // receiver thread
+        let receiver = thread::spawn(move || {
+            if let Ok(req) = rx.recv() {
+                println!("Received request: {req:?}");
+                assert_eq!(req.op, Some(sns_raw::SnsRawRegisterOp::Read as i32));
+                assert_eq!(req.addr, Some(0x10));
+                assert_eq!(req.data, Some(vec![0x00]));
+            } else {
+                panic!("Failed to receive request");
+            }
+        });
+
+        sender.join().expect("Sender thread panicked");
+        receiver.join().expect("Receiver thread panicked");
+    }
 }
