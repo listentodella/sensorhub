@@ -34,10 +34,12 @@ pub fn parse_packet(buf: &[u8]) -> Option<&[u8]> {
         return None;
     }
     let crc = u16::from_le_bytes([buf[4 + len], buf[5 + len]]);
-    if crc16(&buf[0..4 + len]) != crc {
+    if crc16(&buf[..buf.len() - 2]) != crc {
         return None;
     }
-    Some(&buf[4..4 + len])
+
+    let payload = &buf[4..buf.len() - 2];
+    Some(payload)
 }
 
 #[cfg(test)]

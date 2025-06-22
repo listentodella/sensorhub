@@ -10,8 +10,11 @@ categories = ["embedded"]
 
 [dependencies]
 crc = "3.3.0"
+num_enum = "0.7.4"
 prost = "0.14.1"
 prost-types = "0.14.1"
+strum = { version = "0.27.1", features = ["derive", "strum_macros"] }
+strum_macros = "0.27.1"
 
 [build-dependencies]
 prost-build = "0.14.1"
