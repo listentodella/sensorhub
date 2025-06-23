@@ -37,7 +37,7 @@ static LOGGER: SimpleLogger = SimpleLogger;
 
 pub fn init() {
     if let Err(e) = log::set_logger(&LOGGER) {
-        println!("set logger failed: {e} ?");
+        println!("{e}");
         return;
     }
 

@@ -1,5 +1,6 @@
 pub mod log;
 pub mod pb;
+pub mod uuid;
 
 pub use log::{debug, error, info, trace, warn};
 
