@@ -44,11 +44,12 @@ pub fn parse_packet(buf: &[u8]) -> Option<&[u8]> {
 
 #[cfg(test)]
 mod tests {
-    use prost::Message;
-
     use crate::pb::{build_packet, parse_packet, sns_raw};
+    use crate::*;
+    use prost::Message;
     #[test]
     fn sns_raw_test() {
+        log::init();
         let mut read_seq = sns_raw::SnsRawRegisterSequenceReq::default();
         read_seq.reqs.push(sns_raw::SnsRawRegisterReq {
             op: Some(sns_raw::SnsRawRegisterOp::Read as i32),
@@ -78,8 +79,8 @@ mod tests {
             data: Some(vec![0x01, 0x02]),
         });
 
-        println!("Read sequence: {read_seq:?}");
-        println!("Write sequence: {write_seq:?}");
+        trace!("Read sequence: {read_seq:?}");
+        trace!("Write sequence: {write_seq:?}");
 
         assert_eq!(
             read_seq.reqs[0].op,
@@ -99,7 +100,7 @@ mod tests {
         let mut rsp = sns_raw::SnsRawRegisterRsp::default();
         rsp.data.push(0x01);
         rsp.data.push(0x02);
-        println!("Read response: {rsp:#x?}");
+        trace!("Read response: {rsp:#x?}");
         assert_ne!(rsp.data, vec![0x01, 0x02, 0x03]);
     }
 
@@ -124,12 +125,12 @@ mod tests {
         // receiver thread
         let receiver = thread::spawn(move || {
             if let Ok(req) = rx.recv() {
-                println!("Received request: {req:?}");
+                trace!("Received request: {req:?}");
                 assert_eq!(req.op, Some(sns_raw::SnsRawRegisterOp::Read as i32));
                 assert_eq!(req.addr, Some(0x10));
                 assert_eq!(req.data, Some(vec![0x00]));
             } else {
-                panic!("Failed to receive request");
+                error!("Failed to receive request");
             }
         });
 
@@ -161,12 +162,12 @@ mod tests {
         let receiver = thread::spawn(move || {
             if let Ok(buf) = rx.recv() {
                 let req = sns_raw::SnsRawRegisterReq::decode(&buf[..]).unwrap();
-                println!("Recv req(encoded): {req:?}");
+                trace!("Recv req(encoded): {req:?}");
                 assert_eq!(req.op, Some(sns_raw::SnsRawRegisterOp::Write as i32));
                 assert_eq!(req.addr, Some(0x10));
                 assert_eq!(req.data, Some(vec![0x01, 0x02]));
             } else {
-                panic!("Failed to receive request");
+                error!("Failed to receive request");
             }
         });
 
@@ -200,15 +201,15 @@ mod tests {
             if let Ok(buf) = rx.recv() {
                 if let Some(payload) = parse_packet(&buf) {
                     let req = sns_raw::SnsRawRegisterReq::decode(payload).unwrap();
-                    println!("Recv req(encoded+crc): {req:?}");
+                    trace!("Recv req(encoded+crc): {req:?}");
                     assert_eq!(req.op, Some(sns_raw::SnsRawRegisterOp::Write as i32));
                     assert_eq!(req.addr, Some(0x10));
                     assert_eq!(req.data, Some(vec![0x01, 0x02]));
                 } else {
-                    panic!("Failed to parse packet");
+                    error!("Failed to parse packet");
                 }
             } else {
-                panic!("Failed to receive request");
+                error!("Failed to receive request");
             }
         });
 

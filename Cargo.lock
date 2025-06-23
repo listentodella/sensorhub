@@ -343,6 +343,7 @@ name = "sensorhub-rs"
 version = "0.1.0"
 dependencies = [
  "crc",
+ "log",
  "num_enum",
  "prost",
  "prost-build",

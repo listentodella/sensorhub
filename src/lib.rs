@@ -1,10 +1,13 @@
+pub mod log;
 pub mod pb;
 
-#[derive(Debug, Clone, Eq, PartialEq, strum_macros::Display)]
+pub use log::{debug, error, info, trace, warn};
+
+#[derive(Debug, Clone, Eq, PartialEq, strum_macros::Display, strum_macros::EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum SensorType {
     #[strum(serialize = "accel")]
-    Accelermeter,
+    Accelerometer,
     #[strum(serialize = "gyro")]
     Gyroscope,
     #[strum(serialize = "mag")]
@@ -21,25 +24,39 @@ pub enum SensorType {
 
 pub trait SensorOps {
     fn detect(&mut self) -> bool {
-        println!("default detect");
+        trace!("default detect");
         false
     }
 
     fn open(&mut self, req_odr: u32) {
-        println!("default open: {req_odr}");
+        trace!("default open: {req_odr}");
     }
 
     fn hw_open(&mut self) {
-        println!("forget to impl or not?");
+        trace!("forget to impl or not?");
     }
 
     fn close(&mut self) {
-        println!("default close");
+        trace!("default close");
     }
     fn flush(&mut self) {
-        println!("default flush");
+        trace!("default flush");
     }
     fn batch(&mut self) {
-        println!("default batch");
+        trace!("default batch");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::SensorType;
+    use log::info;
+    use strum::IntoEnumIterator;
+
+    #[test]
+    fn sensor_type_test() {
+        for sensor in SensorType::iter() {
+            info!("Sensor type: {sensor:?}, string type = {sensor}");
+        }
     }
 }
