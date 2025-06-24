@@ -1,12 +1,17 @@
+pub mod attr;
 pub mod log;
 pub mod pb;
 pub mod uuid;
 
+pub use attr::*;
 pub use log::{debug, error, info, trace, warn};
 
-#[derive(Debug, Clone, Eq, PartialEq, strum_macros::Display, strum_macros::EnumIter)]
+#[derive(Default, Debug, Clone, Eq, PartialEq, strum_macros::Display, strum_macros::EnumIter)]
 #[strum(serialize_all = "snake_case")]
 pub enum SensorType {
+    #[default]
+    #[strum(serialize = "unknown")]
+    Unknown,
     #[strum(serialize = "accel")]
     Accelerometer,
     #[strum(serialize = "gyro")]
@@ -60,4 +65,9 @@ mod tests {
             info!("Sensor type: {sensor:?}, string type = {sensor}");
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Sensor {
+    attrs: Vec<SensorAttr>,
 }
