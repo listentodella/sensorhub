@@ -10,6 +10,7 @@ categories = ["embedded"]
 
 [dependencies]
 crc = "3.3.0"
+inventory = "0.3.20"
 log = "0.4.27"
 num_enum = "0.7.4"
 once_cell = "1.21.3"

@@ -202,6 +202,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "inventory"
+version = "0.3.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab08d7cd2c5897f2c949e5383ea7c7db03fb19130ffcfbf7eda795137ae3cb83"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "itertools"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -501,6 +510,7 @@ name = "sensorhub-rs"
 version = "0.1.0"
 dependencies = [
  "crc",
+ "inventory",
  "log",
  "num_enum",
  "once_cell",
