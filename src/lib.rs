@@ -44,15 +44,6 @@ pub enum SensorType {
 }
 
 pub trait SensorOps: Sync {
-    fn probe(&self) -> bool {
-        trace!("default detect");
-        false
-    }
-
-    fn remove(&self) {
-        trace!("default remove");
-    }
-
     fn open(&mut self, req_odr: u32) {
         trace!("default open: {req_odr}");
     }
@@ -91,22 +82,97 @@ pub trait SensorOps: Sync {
     }
 }
 
-pub struct SensorDriver {
-    pub sensor_type: SensorType,
-    pub ops: &'static dyn SensorOps,
+#[derive(Debug, Default, PartialEq)]
+pub struct Sensor {
+    pub attrs: Vec<SensorAttr>,
 }
 
-collect_sensors! {SensorDriver}
+impl SensorOps for Sensor {
+    fn attrs(&self) -> &Vec<SensorAttr> {
+        &self.attrs
+    }
+    fn attrs_mut(&mut self) -> &mut Vec<SensorAttr> {
+        &mut self.attrs
+    }
+}
 
-fn probe_all_sensors() {
-    for sensor in sensor_inventory::iter::<SensorDriver>() {
-        info!("Probing sensor: {:?}", sensor.sensor_type);
-        sensor.ops.probe();
+// impl SensorOps for Sensor;
+#[derive(Debug, PartialEq)]
+pub struct SensorInstance;
+
+pub trait SensorModuleOps: Sync {
+    fn probe(&self) -> bool {
+        trace!("default detect");
+        false
+    }
+
+    fn remove(&self) {
+        trace!("default remove");
+    }
+
+    fn create_sensor(&self) -> Vec<Sensor> {
+        info!("default create sensor");
+        vec![]
+    }
+
+    fn create_sensor_instance(&self) -> SensorInstance {
+        info!("default create sensor instance");
+        SensorInstance
+    }
+}
+
+pub struct SensorModule {
+    pub name: &'static str,
+    pub sub_sensor: u8,
+    pub ops: &'static dyn SensorModuleOps,
+}
+
+impl SensorModule {
+    pub fn probe(&self) -> bool {
+        self.ops.probe()
+    }
+
+    pub fn remove(&self) {
+        self.ops.remove();
+    }
+
+    pub fn create_sensor(&self) -> Vec<Sensor> {
+        self.ops.create_sensor()
+    }
+
+    pub fn create_sensor_instance(&self) -> SensorInstance {
+        self.ops.create_sensor_instance()
+    }
+}
+
+collect_sensors! {SensorModule}
+
+#[derive(Debug, Default)]
+struct SensorHubFw {
+    sensors: Vec<Sensor>,
+    sensor_instances: Vec<SensorInstance>,
+}
+
+impl SensorHubFw {
+    fn probe_all_sensors(&mut self) {
+        for module in sensor_inventory::iter::<SensorModule>() {
+            info!("Probing sensor: {}", module.name);
+            if module.probe() {
+                let sensors = module.create_sensor();
+                self.sensors.extend(sensors);
+                self.sensor_instances.push(module.create_sensor_instance());
+            }
+        }
     }
 }
 
 pub fn init() {
-    probe_all_sensors();
+    let mut sensor_hub_fw = SensorHubFw::default();
+    sensor_hub_fw.probe_all_sensors();
+
+    info!("=========after probe=========");
+    info!("registered sensors: {:?}", sensor_hub_fw.sensors);
+    info!("registered instances: {:?}", sensor_hub_fw.sensor_instances);
 }
 
 #[cfg(test)]
@@ -126,7 +192,7 @@ mod tests {
 
     struct SensorDriverTest {
         pub sensor_type: SensorType,
-        pub ops: &'static dyn SensorOps,
+        pub _ops: &'static dyn SensorOps,
     }
 
     collect_sensors! {SensorDriverTest}
@@ -144,7 +210,7 @@ mod tests {
     static MY_SENSOR1: MySensor1 = MySensor1 { attrs: vec![] };
     register_sensor! {SensorDriverTest {
         sensor_type: SensorType::Accelerometer,
-        ops: &MY_SENSOR1,
+        _ops: &MY_SENSOR1,
     }}
 
     struct MySensor2 {
@@ -158,11 +224,6 @@ mod tests {
         fn attrs_mut(&mut self) -> &mut Vec<SensorAttr> {
             &mut self.attrs
         }
-
-        fn probe(&self) -> bool {
-            info!("MySensor2 detected with value: {}", self._val);
-            true
-        }
     }
     static MY_SENSOR2: MySensor2 = MySensor2 {
         _val: 233,
@@ -170,14 +231,13 @@ mod tests {
     };
     register_sensor! {SensorDriverTest {
         sensor_type: SensorType::Gyroscope,
-        ops: &MY_SENSOR2,
+        _ops: &MY_SENSOR2,
     }}
 
     #[test]
     fn probe_all_sensors() {
         for sensor in sensor_inventory::iter::<SensorDriverTest>() {
             info!("====>>>>Probing sensor: {:?}", sensor.sensor_type);
-            sensor.ops.probe();
         }
     }
 }
