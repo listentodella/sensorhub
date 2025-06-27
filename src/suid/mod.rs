@@ -1,13 +1,13 @@
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
-use uuid::Uuid;
+pub use uuid::Uuid as Suid;
 
 // 静态Vec存储已生成的UUID
-static GENERATED_UUIDS: Lazy<Mutex<Vec<Uuid>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static GENERATED_UUIDS: Lazy<Mutex<Vec<Suid>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 /// 生成UUID：如果检测到重复则返回Err
-pub fn generate(input: &str) -> Result<Uuid, String> {
-    let uuid = Uuid::new_v5(&Uuid::NAMESPACE_DNS, input.as_bytes());
+pub fn generate(input: &str) -> Result<Suid, String> {
+    let uuid = Suid::new_v5(&Suid::NAMESPACE_DNS, input.as_bytes());
 
     let mut generated_uuids = GENERATED_UUIDS.lock().unwrap();
 
@@ -25,14 +25,14 @@ pub fn get_generated_count() -> usize {
     GENERATED_UUIDS.lock().unwrap().len()
 }
 
-pub fn get_u64_pair(uuid: &Uuid) -> (u64, u64) {
+pub fn get_u64_pair(uuid: &Suid) -> (u64, u64) {
     uuid.as_u64_pair()
 }
 
 #[allow(dead_code)]
 /// skip check duplicate, only for test
-fn generate_fixed(input: &str) -> Uuid {
-    Uuid::new_v5(&Uuid::NAMESPACE_DNS, input.as_bytes())
+pub fn generate_fixed(input: &str) -> Suid {
+    Suid::new_v5(&Suid::NAMESPACE_DNS, input.as_bytes())
 }
 
 #[cfg(test)]
@@ -47,7 +47,7 @@ mod tests {
 
     #[test]
     #[serial]
-    fn uuid_generate_test() {
+    fn suid_generate_test() {
         reset_state();
 
         let input = "example.com";
@@ -66,20 +66,20 @@ mod tests {
 
     #[test]
     #[serial]
-    fn uuid_multiple_inputs_test() {
+    fn suid_multiple_inputs_test() {
         reset_state();
 
-        let uuid1 = generate("input1").unwrap();
-        let uuid2 = generate("input2").unwrap();
-        let uuid3 = generate("input3").unwrap();
+        let suid1 = generate("input1").unwrap();
+        let suid2 = generate("input2").unwrap();
+        let suid3 = generate("input3").unwrap();
 
-        trace!("uuid1: {uuid1:?}");
-        trace!("uuid2: {uuid2:?}");
-        trace!("uuid3: {uuid3:?}");
+        trace!("suid1: {suid1:?}");
+        trace!("suid2: {suid2:?}");
+        trace!("suid3: {suid3:?}");
 
-        assert_ne!(uuid1, uuid2);
-        assert_ne!(uuid2, uuid3);
-        assert_ne!(uuid1, uuid3);
+        assert_ne!(suid1, suid2);
+        assert_ne!(suid2, suid3);
+        assert_ne!(suid1, suid3);
 
         assert_eq!(get_generated_count(), 3);
 
@@ -89,20 +89,20 @@ mod tests {
     }
 
     #[test]
-    fn uuid_fixed_generate_test() {
+    fn suid_fixed_generate_test() {
         let input = "example.com";
-        let uuid = generate_fixed(input);
-        let uuid2 = generate_fixed(input);
-        trace!("Fixed uuid: {uuid:?}, uuid2: {uuid2:?}");
-        assert_eq!(uuid, uuid2);
-        assert_eq!(uuid.to_string(), "cfbff0d1-9375-5685-968c-48ce8b15ae17");
+        let suid = generate_fixed(input);
+        let suid2 = generate_fixed(input);
+        trace!("Fixed suid: {suid:?}, suid2: {suid2:?}");
+        assert_eq!(suid, suid2);
+        assert_eq!(suid.to_string(), "cfbff0d1-9375-5685-968c-48ce8b15ae17");
     }
 
     #[test]
-    fn uuid_u64_pair_test() {
+    fn suid_u64_pair_test() {
         let input = "example.com";
-        let uuid = generate_fixed(input);
-        let (high, low) = get_u64_pair(&uuid);
+        let suid = generate_fixed(input);
+        let (high, low) = get_u64_pair(&suid);
         trace!("pair high - {high:#x}, low - {low:#x}");
         assert_eq!(high, 0xcfbff0d193755685);
         assert_eq!(low, 0x968c48ce8b15ae17);

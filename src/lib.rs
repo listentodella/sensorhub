@@ -1,11 +1,13 @@
 pub mod attr;
 pub mod log;
 pub mod pb;
-pub mod uuid;
+pub mod suid;
 
 pub use attr::*;
 pub use inventory as sensor_inventory;
 pub use log::{debug, error, info, trace, warn};
+
+pub use suid::Suid;
 
 #[macro_export]
 macro_rules! collect_sensors {
@@ -84,7 +86,25 @@ pub trait SensorOps: Sync {
 
 #[derive(Debug, Default, PartialEq)]
 pub struct Sensor {
+    pub suid: Option<Suid>,
     pub attrs: Vec<SensorAttr>,
+}
+
+impl Sensor {
+    pub fn new() -> Self {
+        Self {
+            suid: None,
+            attrs: vec![],
+        }
+    }
+
+    fn set_suid(&mut self, suid: Suid) {
+        self.suid = Some(suid);
+    }
+
+    pub fn get_suid(&self) -> Option<&Suid> {
+        self.suid.as_ref()
+    }
 }
 
 impl SensorOps for Sensor {
@@ -99,6 +119,108 @@ impl SensorOps for Sensor {
 // impl SensorOps for Sensor;
 #[derive(Debug, PartialEq)]
 pub struct SensorInstance;
+
+// 传感器管理器
+#[derive(Debug, Default)]
+pub struct SensorManager {
+    sensors: Vec<Sensor>,
+    module_sensors: std::collections::HashMap<String, Vec<Suid>>,
+    suid_to_index: std::collections::HashMap<Suid, usize>,
+}
+
+impl SensorManager {
+    // 添加传感器并返回 SUID 列表
+    fn add_sensors(&mut self, module_name: &str, mut sensors: Vec<Sensor>) -> Vec<Suid> {
+        let mut suids = Vec::new();
+
+        for (index, sensor) in sensors.iter_mut().enumerate() {
+            // 为每个传感器生成 SUID
+            let suid = match sensor.get_suid() {
+                Some(existing_suid) => *existing_suid,
+                None => {
+                    let suid =
+                        suid::generate(&format!("{module_name}_{index}")).unwrap_or_else(|_| {
+                            error!(
+                                "suid already exists, module_name: {module_name}, index: {index}"
+                            );
+                            suid::generate_fixed("0xdeadbeef")
+                        });
+                    sensor.set_suid(suid);
+                    suid
+                }
+            };
+
+            suids.push(suid);
+        }
+
+        // 记录索引映射
+        let start_index = self.sensors.len();
+        for (i, suid) in suids.iter().enumerate() {
+            self.suid_to_index.insert(*suid, start_index + i);
+        }
+
+        self.sensors.extend(sensors);
+        self.module_sensors
+            .insert(module_name.to_string(), suids.clone());
+
+        suids
+    }
+
+    // 获取模块的传感器 UUID 列表
+    pub fn get_module_sensor_suids(&self, module_name: &str) -> Option<&[Suid]> {
+        self.module_sensors
+            .get(module_name)
+            .map(|uuids| uuids.as_slice())
+    }
+
+    // 通过 SUID 获取传感器（可变引用）
+    pub fn get_sensor_mut(&mut self, suid: &Suid) -> Option<&mut Sensor> {
+        self.suid_to_index
+            .get(suid)
+            .and_then(|&index| self.sensors.get_mut(index))
+    }
+
+    // 通过 SUID 获取传感器（不可变引用）
+    pub fn get_sensor(&self, suid: &Suid) -> Option<&Sensor> {
+        self.suid_to_index
+            .get(suid)
+            .and_then(|&index| self.sensors.get(index))
+    }
+
+    // 获取所有传感器
+    pub fn get_all_sensors(&self) -> &[Sensor] {
+        &self.sensors
+    }
+
+    // 更新传感器属性
+    pub fn update_sensor_attr(&mut self, suid: &Suid, attr: SensorAttr) {
+        if let Some(sensor) = self.get_sensor_mut(suid) {
+            sensor.set_attr(attr);
+        }
+    }
+
+    // 通过 SUID 查找传感器是否存在
+    pub fn has_sensor(&self, suid: &Suid) -> bool {
+        self.suid_to_index.contains_key(suid)
+    }
+
+    // 获取传感器总数
+    pub fn sensor_count(&self) -> usize {
+        self.sensors.len()
+    }
+
+    // 获取模块的传感器（通过 SUID）
+    pub fn get_module_sensors(&self, module_name: &str) -> Vec<&Sensor> {
+        if let Some(suids) = self.module_sensors.get(module_name) {
+            suids
+                .iter()
+                .filter_map(|suid| self.get_sensor(suid))
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+}
 
 pub trait SensorModuleOps: Sync {
     fn probe(&self) -> bool {
@@ -149,7 +271,7 @@ collect_sensors! {SensorModule}
 
 #[derive(Debug, Default)]
 struct SensorHubFw {
-    sensors: Vec<Sensor>,
+    sensor_manager: SensorManager,
     sensor_instances: Vec<SensorInstance>,
 }
 
@@ -159,10 +281,23 @@ impl SensorHubFw {
             info!("Probing sensor: {}", module.name);
             if module.probe() {
                 let sensors = module.create_sensor();
-                self.sensors.extend(sensors);
+                let sensor_suids = self.sensor_manager.add_sensors(module.name, sensors);
                 self.sensor_instances.push(module.create_sensor_instance());
+
+                info!(
+                    "Module {} registered {} sensors with SUIDs: {:?}",
+                    module.name,
+                    sensor_suids.len(),
+                    sensor_suids
+                );
             }
         }
+    }
+
+    // 获取传感器管理器
+    #[allow(dead_code)]
+    pub fn get_sensor_manager(&mut self) -> &mut SensorManager {
+        &mut self.sensor_manager
     }
 }
 
@@ -171,7 +306,10 @@ pub fn init() {
     sensor_hub_fw.probe_all_sensors();
 
     info!("=========after probe=========");
-    info!("registered sensors: {:?}", sensor_hub_fw.sensors);
+    info!(
+        "registered sensors: {:?}",
+        sensor_hub_fw.sensor_manager.get_all_sensors()
+    );
     info!("registered instances: {:?}", sensor_hub_fw.sensor_instances);
 }
 
