@@ -95,31 +95,30 @@ register_sensor! {
 fn main() {
     sensorhub_rs::log::init();
     sensorhub_rs::init();
-    /*
-       // 演示如何使用 SensorManager
-       let mut sensor_manager = get_sensor_manager();
 
-       // 先获取 IMU 模块的传感器 UUID 列表
-       let suids = sensor_manager
-           .get_module_sensor_suids("mVendor-0000")
-           .map(|suids| suids.to_vec())
-           .unwrap_or_default();
+    let mut fw = sensorhub_rs::FW.lock().unwrap();
+    let sensor_manager = fw.get_sensor_manager();
 
-       debug!("IMU module sensor SUIDs: {:?}", suids);
+    // 先获取 IMU 模块的传感器 UUID 列表
+    let suids = sensor_manager
+        .get_module_sensor_suids("mVendor-0000")
+        .map(|suids| suids.to_vec())
+        .unwrap_or_default();
 
-       // 演示如何通过 SUID 获取传感器并进行操作
-       for (i, suid) in suids.iter().enumerate() {
-           if let Some(sensor) = sensor_manager.get_sensor_mut(suid) {
-               debug!("Operating on sensor {} with SUID: {}", i, suid);
+    debug!("IMU module sensor SUIDs: {suids:?}");
 
-               // 这里可以进行各种传感器操作
-               // 例如：设置采样率、开启数据流等
-               sensor.set_attr(SensorAttr::Available(true));
+    // 演示如何通过 SUID 获取传感器并进行操作
+    for (i, suid) in suids.iter().enumerate() {
+        if let Some(sensor) = sensor_manager.get_sensor_mut(suid) {
+            debug!("Operating on sensor {i} with SUID: {suid}");
 
-               debug!("Sensor {} attributes: {:?}", i, sensor.attrs());
-           }
-       }
-    */
+            // 这里可以进行各种传感器操作
+            // 例如：设置采样率、开启数据流等
+            sensor.set_attr(SensorAttr::Available(true));
+
+            debug!("Sensor {} attributes: {:?}", i, sensor.attrs());
+        }
+    }
 
     debug!("IMU example completed");
 }

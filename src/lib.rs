@@ -9,6 +9,9 @@ pub use log::{debug, error, info, trace, warn};
 
 pub use suid::Suid;
 
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
+
 #[macro_export]
 macro_rules! collect_sensors {
     ($t:ty) => {
@@ -270,10 +273,16 @@ impl SensorModule {
 collect_sensors! {SensorModule}
 
 #[derive(Debug, Default)]
-struct SensorHubFw {
+pub struct SensorHubFw {
     sensor_manager: SensorManager,
     sensor_instances: Vec<SensorInstance>,
 }
+
+pub static FW: Lazy<Mutex<SensorHubFw>> = Lazy::new(|| {
+    let mut fw = SensorHubFw::default();
+    fw.probe_all_sensors();
+    Mutex::new(fw)
+});
 
 impl SensorHubFw {
     fn probe_all_sensors(&mut self) {
@@ -295,16 +304,13 @@ impl SensorHubFw {
     }
 
     // 获取传感器管理器
-    #[allow(dead_code)]
     pub fn get_sensor_manager(&mut self) -> &mut SensorManager {
         &mut self.sensor_manager
     }
 }
 
 pub fn init() {
-    let mut sensor_hub_fw = SensorHubFw::default();
-    sensor_hub_fw.probe_all_sensors();
-
+    let sensor_hub_fw = FW.lock().unwrap();
     info!("=========after probe=========");
     info!(
         "registered sensors: {:?}",
