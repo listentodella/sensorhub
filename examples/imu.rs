@@ -1,3 +1,6 @@
+use once_cell::sync::Lazy;
+use std::sync::{Arc, Mutex};
+
 use sensorhub_rs::{
     Sensor, SensorAttr, SensorModule, SensorModuleOps, SensorOps, SensorType, log::debug,
     register_sensor,
@@ -40,19 +43,33 @@ struct Imu {
     gyro: GyroSensor,
 }
 
+impl Imu {
+    fn new() -> Self {
+        Self {
+            accel: AccelSensor::new(),
+            gyro: GyroSensor::new(),
+        }
+    }
+
+    fn read_chip_id(&self) -> bool {
+        debug!("read_chip_id");
+        true
+    }
+}
+
 // 实现 IMU 模块的具体操作
-struct ImuModuleOps;
+struct ImuModuleOps {
+    imu: &'static Lazy<Arc<Mutex<Imu>>>,
+}
 
 impl SensorModuleOps for ImuModuleOps {
     fn probe(&self) -> bool {
         debug!("Probing IMU module: mVendor-0000");
+        let imu = self.imu.lock().unwrap();
 
         // 这里可以添加实际的硬件检测逻辑
         // 例如：检查 I2C 地址、读取设备 ID 等
-
-        // 模拟检测成功
-        debug!("IMU module probe successful");
-        true
+        imu.read_chip_id()
     }
 
     fn remove(&self) {
@@ -81,8 +98,8 @@ impl SensorModuleOps for ImuModuleOps {
     }
 }
 
-// 注册 IMU 模块
-static IMU_MODULE_OPS: ImuModuleOps = ImuModuleOps;
+static IMU_INSTANCE: Lazy<Arc<Mutex<Imu>>> = Lazy::new(|| Arc::new(Mutex::new(Imu::new())));
+static IMU_MODULE_OPS: ImuModuleOps = ImuModuleOps { imu: &IMU_INSTANCE };
 
 register_sensor! {
     SensorModule {
