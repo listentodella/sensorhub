@@ -226,8 +226,10 @@ impl SensorManager {
 }
 
 pub trait SensorModuleOps: Sync {
-    fn probe(&self) -> bool {
-        trace!("default detect");
+    //TODO: maybe we should abstract a data struct contains more info
+    // from the SensorModule
+    fn probe(&self, module_name: &str) -> bool {
+        trace!("default detect: {module_name}");
         false
     }
 
@@ -235,8 +237,8 @@ pub trait SensorModuleOps: Sync {
         trace!("default remove");
     }
 
-    fn create_sensor(&self) -> Vec<Sensor> {
-        info!("default create sensor");
+    fn create_sensor(&self, hw_id: u8) -> Vec<Sensor> {
+        info!("default create sensor: {hw_id}");
         vec![]
     }
 
@@ -248,13 +250,14 @@ pub trait SensorModuleOps: Sync {
 
 pub struct SensorModule {
     pub name: &'static str,
+    pub hw_id: u8,
     pub sub_sensor: u8,
     pub ops: &'static dyn SensorModuleOps,
 }
 
 impl SensorModule {
     pub fn probe(&self) -> bool {
-        self.ops.probe()
+        self.ops.probe(self.name)
     }
 
     pub fn remove(&self) {
@@ -262,7 +265,7 @@ impl SensorModule {
     }
 
     pub fn create_sensor(&self) -> Vec<Sensor> {
-        self.ops.create_sensor()
+        self.ops.create_sensor(self.hw_id)
     }
 
     pub fn create_sensor_instance(&self) -> SensorInstance {

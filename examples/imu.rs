@@ -39,13 +39,15 @@ impl GyroSensor {
 #[derive(Debug)]
 #[allow(dead_code)]
 struct Imu {
+    name: String,
     accel: AccelSensor,
     gyro: GyroSensor,
 }
 
 impl Imu {
-    fn new() -> Self {
+    fn new(name: &str) -> Self {
         Self {
+            name: name.to_string(),
             accel: AccelSensor::new(),
             gyro: GyroSensor::new(),
         }
@@ -63,9 +65,10 @@ struct ImuModuleOps {
 }
 
 impl SensorModuleOps for ImuModuleOps {
-    fn probe(&self) -> bool {
-        debug!("Probing IMU module: mVendor-0000");
-        let imu = self.imu.lock().unwrap();
+    fn probe(&self, module_name: &str) -> bool {
+        debug!("Probing IMU module: {module_name}");
+        let mut imu = self.imu.lock().unwrap();
+        imu.name = module_name.to_string();
 
         // 这里可以添加实际的硬件检测逻辑
         // 例如：检查 I2C 地址、读取设备 ID 等
@@ -73,11 +76,15 @@ impl SensorModuleOps for ImuModuleOps {
     }
 
     fn remove(&self) {
-        debug!("Removing IMU module: mVendor-0000");
+        debug!("Removing IMU module: {}", self.imu.lock().unwrap().name);
     }
 
-    fn create_sensor(&self) -> Vec<Sensor> {
-        debug!("Creating sensors for IMU module: mVendor-0000");
+    fn create_sensor(&self, hw_id: u8) -> Vec<Sensor> {
+        let imu = self.imu.lock().unwrap();
+        debug!(
+            "Creating sensors for IMU module: {}, hw_id: {hw_id}",
+            imu.name
+        );
 
         let mut accel_sensor = Sensor::new();
         accel_sensor.set_attr(SensorAttr::Name("acc".to_string()));
@@ -93,17 +100,31 @@ impl SensorModuleOps for ImuModuleOps {
     }
 
     fn create_sensor_instance(&self) -> sensorhub_rs::SensorInstance {
-        debug!("Creating sensor instance for IMU module: mVendor-0000");
+        debug!(
+            "Creating sensor instance for IMU module: {}",
+            self.imu.lock().unwrap().name
+        );
         sensorhub_rs::SensorInstance
     }
 }
 
-static IMU_INSTANCE: Lazy<Arc<Mutex<Imu>>> = Lazy::new(|| Arc::new(Mutex::new(Imu::new())));
+static IMU_INSTANCE: Lazy<Arc<Mutex<Imu>>> =
+    Lazy::new(|| Arc::new(Mutex::new(Imu::new("mVendor-000x"))));
 static IMU_MODULE_OPS: ImuModuleOps = ImuModuleOps { imu: &IMU_INSTANCE };
 
 register_sensor! {
     SensorModule {
         name: "mVendor-0000",
+        hw_id: 0,
+        sub_sensor: 2,
+        ops: &IMU_MODULE_OPS,
+    }
+}
+
+register_sensor! {
+    SensorModule {
+        name: "mVendor-0001",
+        hw_id: 1,
         sub_sensor: 2,
         ops: &IMU_MODULE_OPS,
     }
