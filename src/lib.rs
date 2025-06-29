@@ -10,7 +10,7 @@ pub use log::{debug, error, info, trace, warn};
 pub use suid::Suid;
 
 use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 #[macro_export]
 macro_rules! collect_sensors {
@@ -123,10 +123,10 @@ impl SensorOps for Sensor {
 #[derive(Debug, PartialEq)]
 pub struct SensorInstance;
 
-// 传感器管理器
+// 传感器管理器 - 使用 Arc<Mutex<Sensor>> 来共享传感器
 #[derive(Debug, Default)]
 pub struct SensorManager {
-    sensors: Vec<Sensor>,
+    sensors: Vec<Arc<Mutex<Sensor>>>,
     module_sensors: std::collections::HashMap<String, Vec<Suid>>,
     suid_to_index: std::collections::HashMap<Suid, usize>,
 }
@@ -164,7 +164,8 @@ impl SensorManager {
             self.suid_to_index.insert(*suid, start_index + i);
         }
 
-        self.sensors.extend(sensors);
+        self.sensors
+            .extend(sensors.into_iter().map(|s| Arc::new(Mutex::new(s))));
         self.module_sensors
             .insert(module.name.to_string(), suids.clone());
 
@@ -178,28 +179,37 @@ impl SensorManager {
             .map(|uuids| uuids.as_slice())
     }
 
-    // 通过 SUID 获取传感器（可变引用）
-    pub fn get_sensor_mut(&mut self, suid: &Suid) -> Option<&mut Sensor> {
-        self.suid_to_index
-            .get(suid)
-            .and_then(|&index| self.sensors.get_mut(index))
-    }
-
-    // 通过 SUID 获取传感器（不可变引用）
-    pub fn get_sensor(&self, suid: &Suid) -> Option<&Sensor> {
+    // 通过 SUID 获取传感器的 Arc<Mutex<Sensor>> 引用
+    pub fn get_sensor_arc(&self, suid: &Suid) -> Option<&Arc<Mutex<Sensor>>> {
         self.suid_to_index
             .get(suid)
             .and_then(|&index| self.sensors.get(index))
     }
 
-    // 获取所有传感器
-    pub fn get_all_sensors(&self) -> &[Sensor] {
+    // 通过 SUID 获取传感器（可变引用）
+    pub fn get_sensor_mut(&mut self, suid: &Suid) -> Option<std::sync::MutexGuard<Sensor>> {
+        self.suid_to_index
+            .get(suid)
+            .and_then(|&index| self.sensors.get(index))
+            .and_then(|arc_sensor| arc_sensor.lock().ok())
+    }
+
+    // 通过 SUID 获取传感器（不可变引用）
+    pub fn get_sensor(&self, suid: &Suid) -> Option<std::sync::MutexGuard<Sensor>> {
+        self.suid_to_index
+            .get(suid)
+            .and_then(|&index| self.sensors.get(index))
+            .and_then(|arc_sensor| arc_sensor.lock().ok())
+    }
+
+    // 获取所有传感器的 Arc<Mutex<Sensor>> 引用
+    fn get_all_sensor_arcs(&self) -> &[Arc<Mutex<Sensor>>] {
         &self.sensors
     }
 
     // 更新传感器属性
     pub fn update_sensor_attr(&mut self, suid: &Suid, attr: SensorAttr) {
-        if let Some(sensor) = self.get_sensor_mut(suid) {
+        if let Some(mut sensor) = self.get_sensor_mut(suid) {
             sensor.set_attr(attr);
         }
     }
@@ -215,11 +225,12 @@ impl SensorManager {
     }
 
     // 获取模块的传感器（通过 SUID）
-    pub fn get_module_sensors(&self, module_name: &str) -> Vec<&Sensor> {
+    pub fn get_module_sensors(&self, module_name: &str) -> Vec<Arc<Mutex<Sensor>>> {
         if let Some(suids) = self.module_sensors.get(module_name) {
             suids
                 .iter()
-                .filter_map(|suid| self.get_sensor(suid))
+                .filter_map(|suid| self.get_sensor_arc(suid))
+                .cloned()
                 .collect()
         } else {
             vec![]
@@ -319,7 +330,7 @@ pub fn init() {
     info!("=========after probe=========");
     info!(
         "registered sensors: {:?}",
-        sensor_hub_fw.sensor_manager.get_all_sensors()
+        sensor_hub_fw.sensor_manager.get_all_sensor_arcs()
     );
     info!("registered instances: {:?}", sensor_hub_fw.sensor_instances);
 }

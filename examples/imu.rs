@@ -1,22 +1,35 @@
+use log::error;
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
 use sensorhub_rs::{
-    Sensor, SensorAttr, SensorModule, SensorModuleOps, SensorOps, SensorType, log::debug,
+    Sensor, SensorAttr, SensorModule, SensorModuleOps, SensorOps, SensorType, Suid, log::debug,
     register_sensor,
 };
 
 #[derive(Debug)]
 #[allow(dead_code)]
 struct AccelSensor {
-    sensor: Sensor,
+    sensor: Arc<Mutex<Sensor>>,
 }
 
 #[allow(dead_code)]
 impl AccelSensor {
-    fn new() -> Self {
-        Self {
-            sensor: Sensor::new(),
+    fn new(sensor: Arc<Mutex<Sensor>>) -> Self {
+        Self { sensor }
+    }
+
+    fn set_attr(&self, attr: SensorAttr) {
+        if let Ok(mut sensor) = self.sensor.lock() {
+            sensor.set_attr(attr);
+        }
+    }
+
+    fn get_attr(&self, attr: SensorAttr) -> Option<SensorAttr> {
+        if let Ok(sensor) = self.sensor.lock() {
+            sensor.get_attr(attr).cloned()
+        } else {
+            None
         }
     }
 }
@@ -24,14 +37,26 @@ impl AccelSensor {
 #[derive(Debug)]
 #[allow(dead_code)]
 struct GyroSensor {
-    sensor: Sensor,
+    sensor: Arc<Mutex<Sensor>>,
 }
 
 #[allow(dead_code)]
 impl GyroSensor {
-    fn new() -> Self {
-        Self {
-            sensor: Sensor::new(),
+    fn new(sensor: Arc<Mutex<Sensor>>) -> Self {
+        Self { sensor }
+    }
+
+    fn set_attr(&self, attr: SensorAttr) {
+        if let Ok(mut sensor) = self.sensor.lock() {
+            sensor.set_attr(attr);
+        }
+    }
+
+    fn get_attr(&self, attr: SensorAttr) -> Option<SensorAttr> {
+        if let Ok(sensor) = self.sensor.lock() {
+            sensor.get_attr(attr).cloned()
+        } else {
+            None
         }
     }
 }
@@ -40,22 +65,62 @@ impl GyroSensor {
 #[allow(dead_code)]
 struct Imu {
     name: String,
-    accel: AccelSensor,
-    gyro: GyroSensor,
+    accel: Option<AccelSensor>,
+    gyro: Option<GyroSensor>,
+    accel_suid: Option<Suid>,
+    gyro_suid: Option<Suid>,
 }
 
 impl Imu {
     fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
-            accel: AccelSensor::new(),
-            gyro: GyroSensor::new(),
+            accel: None,
+            gyro: None,
+            accel_suid: None,
+            gyro_suid: None,
         }
     }
 
     fn read_chip_id(&self) -> bool {
         debug!("read_chip_id");
         true
+    }
+
+    // 设置共享的传感器对象
+    fn set_accel_sensor(&mut self, sensor: Arc<Mutex<Sensor>>, suid: Suid) {
+        self.accel = Some(AccelSensor::new(sensor));
+        self.accel_suid = Some(suid);
+    }
+
+    fn set_gyro_sensor(&mut self, sensor: Arc<Mutex<Sensor>>, suid: Suid) {
+        self.gyro = Some(GyroSensor::new(sensor));
+        self.gyro_suid = Some(suid);
+    }
+
+    // 更新传感器状态的方法
+    fn update_accel_status(&self, available: bool) {
+        if let Some(accel) = &self.accel {
+            accel.set_attr(SensorAttr::Available(available));
+        }
+    }
+
+    fn update_gyro_status(&self, available: bool) {
+        if let Some(gyro) = &self.gyro {
+            gyro.set_attr(SensorAttr::Available(available));
+        }
+    }
+
+    fn set_accel_sample_rate(&self, rate: f32) {
+        if let Some(accel) = &self.accel {
+            accel.set_attr(SensorAttr::Rates(vec![rate]));
+        }
+    }
+
+    fn set_gyro_sample_rate(&self, rate: f32) {
+        if let Some(gyro) = &self.gyro {
+            gyro.set_attr(SensorAttr::Rates(vec![rate]));
+        }
     }
 }
 
@@ -145,20 +210,58 @@ fn main() {
         .map(|suids| suids.to_vec())
         .unwrap_or_default();
 
-    debug!("IMU module sensor SUIDs: {suids:?}");
+    error!("IMU module sensor SUIDs: {suids:?}");
 
-    // 演示如何通过 SUID 获取传感器并进行操作
-    for (i, suid) in suids.iter().enumerate() {
-        if let Some(sensor) = sensor_manager.get_sensor_mut(suid) {
-            debug!("Operating on sensor {i} with SUID: {suid}");
+    // 将共享的传感器对象传递给 IMU 实例
+    if suids.len() >= 2 {
+        let mut imu = IMU_INSTANCE.lock().unwrap();
 
-            // 这里可以进行各种传感器操作
-            // 例如：设置采样率、开启数据流等
-            sensor.set_attr(SensorAttr::Available(true));
+        // 获取加速度计传感器
+        if let Some(accel_sensor_arc) = sensor_manager.get_sensor_arc(&suids[0]) {
+            imu.set_accel_sensor(accel_sensor_arc.clone(), suids[0]);
+            debug!("Accel sensor connected with SUID: {}", suids[0]);
+        }
 
-            debug!("Sensor {} attributes: {:?}", i, sensor.attrs());
+        // 获取陀螺仪传感器
+        if let Some(gyro_sensor_arc) = sensor_manager.get_sensor_arc(&suids[1]) {
+            imu.set_gyro_sensor(gyro_sensor_arc.clone(), suids[1]);
+            debug!("Gyro sensor connected with SUID: {}", suids[1]);
         }
     }
 
-    debug!("IMU example completed");
+    // 演示 IMU 驱动如何修改传感器状态
+    {
+        let imu = IMU_INSTANCE.lock().unwrap();
+
+        // IMU 驱动更新传感器状态
+        imu.update_accel_status(true);
+        imu.update_gyro_status(true);
+
+        // IMU 驱动设置采样率
+        imu.set_accel_sample_rate(100.0);
+        imu.set_gyro_sample_rate(200.0);
+
+        debug!("IMU driver updated sensor status");
+    }
+
+    // 验证 SensorManager 能够观察到 IMU 驱动的修改
+    for (i, suid) in suids.iter().enumerate() {
+        if let Some(sensor) = sensor_manager.get_sensor(suid) {
+            debug!("Sensor {i} with SUID: {suid}");
+            debug!("Sensor {} attributes: {:?}", i, sensor.attrs());
+
+            // 检查是否能看到 IMU 驱动的修改
+            if let Some(SensorAttr::Available(available)) =
+                sensor.get_attr(SensorAttr::Available(false))
+            {
+                debug!("Sensor {i} available: {available}");
+            }
+
+            if let Some(SensorAttr::Rates(rates)) = sensor.get_attr(SensorAttr::Rates(vec![])) {
+                debug!("Sensor {i} rates: {rates:?}");
+            }
+        }
+    }
+
+    debug!("IMU example completed - demonstrating shared sensor access");
 }
