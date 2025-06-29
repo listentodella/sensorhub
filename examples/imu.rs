@@ -1,10 +1,9 @@
-use log::error;
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
 use sensorhub_rs::{
     Sensor, SensorAttr, SensorModule, SensorModuleOps, SensorOps, SensorType, Suid, log::debug,
-    register_sensor,
+    log::error, register_sensor,
 };
 
 #[derive(Debug)]
@@ -204,28 +203,38 @@ fn main() {
     let mut fw = sensorhub_rs::FW.lock().unwrap();
     let sensor_manager = fw.get_sensor_manager();
 
-    // 先获取 IMU 模块的传感器 UUID 列表
-    let suids = sensor_manager
-        .get_module_sensor_suids("mVendor-0000")
+    // 获取特定 hw_id 的 IMU 模块传感器 UUID 列表
+    let suids_hw0 = sensor_manager
+        .get_module_sensor_suids("mVendor-0000", 0)
         .map(|suids| suids.to_vec())
         .unwrap_or_default();
 
-    error!("IMU module sensor SUIDs: {suids:?}");
+    let suids_hw1 = sensor_manager
+        .get_module_sensor_suids("mVendor-0000", 1)
+        .map(|suids| suids.to_vec())
+        .unwrap_or_default();
 
-    // 将共享的传感器对象传递给 IMU 实例
-    if suids.len() >= 2 {
+    error!("IMU module hw_id=0 sensor SUIDs: {suids_hw0:?}");
+    error!("IMU module hw_id=1 sensor SUIDs: {suids_hw1:?}");
+
+    // 演示如何获取所有同名模块的传感器
+    let all_suids = sensor_manager.get_all_module_sensor_suids("mVendor-0000");
+    error!("All IMU module sensor SUIDs: {all_suids:?}");
+
+    // 将共享的传感器对象传递给 IMU 实例（以 hw_id=0 为例）
+    if suids_hw0.len() >= 2 {
         let mut imu = IMU_INSTANCE.lock().unwrap();
 
         // 获取加速度计传感器
-        if let Some(accel_sensor_arc) = sensor_manager.get_sensor_arc(&suids[0]) {
-            imu.set_accel_sensor(accel_sensor_arc.clone(), suids[0]);
-            debug!("Accel sensor connected with SUID: {}", suids[0]);
+        if let Some(accel_sensor_arc) = sensor_manager.get_sensor_arc(&suids_hw0[0]) {
+            imu.set_accel_sensor(accel_sensor_arc.clone(), suids_hw0[0]);
+            debug!("Accel sensor connected with SUID: {}", suids_hw0[0]);
         }
 
         // 获取陀螺仪传感器
-        if let Some(gyro_sensor_arc) = sensor_manager.get_sensor_arc(&suids[1]) {
-            imu.set_gyro_sensor(gyro_sensor_arc.clone(), suids[1]);
-            debug!("Gyro sensor connected with SUID: {}", suids[1]);
+        if let Some(gyro_sensor_arc) = sensor_manager.get_sensor_arc(&suids_hw0[1]) {
+            imu.set_gyro_sensor(gyro_sensor_arc.clone(), suids_hw0[1]);
+            debug!("Gyro sensor connected with SUID: {}", suids_hw0[1]);
         }
     }
 
@@ -245,23 +254,32 @@ fn main() {
     }
 
     // 验证 SensorManager 能够观察到 IMU 驱动的修改
-    for (i, suid) in suids.iter().enumerate() {
+    // 检查 hw_id=0 的传感器
+    for (i, suid) in suids_hw0.iter().enumerate() {
         if let Some(sensor) = sensor_manager.get_sensor(suid) {
-            debug!("Sensor {i} with SUID: {suid}");
+            debug!("Sensor hw_id=0, index={i} with SUID: {suid}");
             debug!("Sensor {} attributes: {:?}", i, sensor.attrs());
 
             // 检查是否能看到 IMU 驱动的修改
             if let Some(SensorAttr::Available(available)) =
                 sensor.get_attr(SensorAttr::Available(false))
             {
-                debug!("Sensor {i} available: {available}");
+                debug!("Sensor hw_id=0, index={i} available: {available}");
             }
 
             if let Some(SensorAttr::Rates(rates)) = sensor.get_attr(SensorAttr::Rates(vec![])) {
-                debug!("Sensor {i} rates: {rates:?}");
+                debug!("Sensor hw_id=0, index={i} rates: {rates:?}");
             }
         }
     }
 
-    debug!("IMU example completed - demonstrating shared sensor access");
+    // 检查 hw_id=1 的传感器
+    for (i, suid) in suids_hw1.iter().enumerate() {
+        if let Some(sensor) = sensor_manager.get_sensor(suid) {
+            debug!("Sensor hw_id=1, index={i} with SUID: {suid}");
+            debug!("Sensor {} attributes: {:?}", i, sensor.attrs());
+        }
+    }
+
+    debug!("IMU example completed - demonstrating shared sensor access with hw_id distinction");
 }

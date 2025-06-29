@@ -127,11 +127,16 @@ pub struct SensorInstance;
 #[derive(Debug, Default)]
 pub struct SensorManager {
     sensors: Vec<Arc<Mutex<Sensor>>>,
-    module_sensors: std::collections::HashMap<String, Vec<Suid>>,
+    module_sensors: std::collections::HashMap<String, Vec<Suid>>, // key: "module_name_hw_id"
     suid_to_index: std::collections::HashMap<Suid, usize>,
 }
 
 impl SensorManager {
+    // 生成模块的唯一标识符
+    fn module_key(module: &SensorModule) -> String {
+        format!("{}_{}", module.name, module.hw_id)
+    }
+
     // 添加传感器并返回 SUID 列表
     fn add_sensors(&mut self, module: &SensorModule, mut sensors: Vec<Sensor>) -> Vec<Suid> {
         let mut suids = Vec::new();
@@ -145,8 +150,8 @@ impl SensorManager {
                         suid::generate(&format!("{}_{}_{}", module.name, module.hw_id, index))
                             .unwrap_or_else(|_| {
                                 error!(
-                                    "suid already exists, module_name: {}, index: {}",
-                                    module.name, index
+                                    "suid already exists, module_name: {}, hw_id: {}, index: {}",
+                                    module.name, module.hw_id, index
                                 );
                                 suid::generate_fixed("0xdeadbeef")
                             });
@@ -166,17 +171,42 @@ impl SensorManager {
 
         self.sensors
             .extend(sensors.into_iter().map(|s| Arc::new(Mutex::new(s))));
-        self.module_sensors
-            .insert(module.name.to_string(), suids.clone());
+
+        // 使用 module_name + hw_id 作为唯一标识符
+        let module_key = Self::module_key(module);
+        self.module_sensors.insert(module_key, suids.clone());
 
         suids
     }
 
     // 获取模块的传感器 UUID 列表
-    pub fn get_module_sensor_suids(&self, module_name: &str) -> Option<&[Suid]> {
+    pub fn get_module_sensor_suids(&self, module_name: &str, hw_id: u8) -> Option<&[Suid]> {
+        let module_key = format!("{module_name}_{hw_id}");
         self.module_sensors
-            .get(module_name)
+            .get(&module_key)
             .map(|uuids| uuids.as_slice())
+    }
+
+    // 获取模块的传感器 UUID 列表（向后兼容，仅使用 module_name）
+    pub fn get_module_sensor_suids_by_name(&self, module_name: &str) -> Option<&[Suid]> {
+        // 查找所有匹配的模块
+        for (key, suids) in &self.module_sensors {
+            if key.starts_with(&format!("{module_name}_")) {
+                return Some(suids.as_slice());
+            }
+        }
+        None
+    }
+
+    // 获取所有匹配 module_name 的传感器 UUID 列表
+    pub fn get_all_module_sensor_suids(&self, module_name: &str) -> Vec<Suid> {
+        let mut all_suids = Vec::new();
+        for (key, suids) in &self.module_sensors {
+            if key.starts_with(&format!("{module_name}_")) {
+                all_suids.extend(suids.iter().cloned());
+            }
+        }
+        all_suids
     }
 
     // 通过 SUID 获取传感器的 Arc<Mutex<Sensor>> 引用
@@ -187,7 +217,7 @@ impl SensorManager {
     }
 
     // 通过 SUID 获取传感器（可变引用）
-    pub fn get_sensor_mut(&mut self, suid: &Suid) -> Option<std::sync::MutexGuard<Sensor>> {
+    pub fn get_sensor_mut(&mut self, suid: &Suid) -> Option<std::sync::MutexGuard<'_, Sensor>> {
         self.suid_to_index
             .get(suid)
             .and_then(|&index| self.sensors.get(index))
@@ -195,7 +225,7 @@ impl SensorManager {
     }
 
     // 通过 SUID 获取传感器（不可变引用）
-    pub fn get_sensor(&self, suid: &Suid) -> Option<std::sync::MutexGuard<Sensor>> {
+    pub fn get_sensor(&self, suid: &Suid) -> Option<std::sync::MutexGuard<'_, Sensor>> {
         self.suid_to_index
             .get(suid)
             .and_then(|&index| self.sensors.get(index))
@@ -224,9 +254,10 @@ impl SensorManager {
         self.sensors.len()
     }
 
-    // 获取模块的传感器（通过 SUID）
-    pub fn get_module_sensors(&self, module_name: &str) -> Vec<Arc<Mutex<Sensor>>> {
-        if let Some(suids) = self.module_sensors.get(module_name) {
+    // 获取模块的传感器（通过 module_name + hw_id）
+    pub fn get_module_sensors(&self, module_name: &str, hw_id: u8) -> Vec<Arc<Mutex<Sensor>>> {
+        let module_key = format!("{module_name}_{hw_id}");
+        if let Some(suids) = self.module_sensors.get(&module_key) {
             suids
                 .iter()
                 .filter_map(|suid| self.get_sensor_arc(suid))
@@ -235,6 +266,36 @@ impl SensorManager {
         } else {
             vec![]
         }
+    }
+
+    // 获取模块的传感器（向后兼容，仅使用 module_name）
+    pub fn get_module_sensors_by_name(&self, module_name: &str) -> Vec<Arc<Mutex<Sensor>>> {
+        let mut all_sensors = Vec::new();
+        for (key, suids) in &self.module_sensors {
+            if key.starts_with(&format!("{module_name}_")) {
+                for suid in suids {
+                    if let Some(sensor_arc) = self.get_sensor_arc(suid) {
+                        all_sensors.push(sensor_arc.clone());
+                    }
+                }
+            }
+        }
+        all_sensors
+    }
+
+    // 获取所有模块的传感器（通过 module_name）
+    pub fn get_all_module_sensors(&self, module_name: &str) -> Vec<Arc<Mutex<Sensor>>> {
+        let mut all_sensors = Vec::new();
+        for (key, suids) in &self.module_sensors {
+            if key.starts_with(&format!("{module_name}_")) {
+                for suid in suids {
+                    if let Some(sensor_arc) = self.get_sensor_arc(suid) {
+                        all_sensors.push(sensor_arc.clone());
+                    }
+                }
+            }
+        }
+        all_sensors
     }
 }
 
