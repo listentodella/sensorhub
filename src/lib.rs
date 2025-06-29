@@ -133,7 +133,7 @@ pub struct SensorManager {
 
 impl SensorManager {
     // 添加传感器并返回 SUID 列表
-    fn add_sensors(&mut self, module_name: &str, mut sensors: Vec<Sensor>) -> Vec<Suid> {
+    fn add_sensors(&mut self, module: &SensorModule, mut sensors: Vec<Sensor>) -> Vec<Suid> {
         let mut suids = Vec::new();
 
         for (index, sensor) in sensors.iter_mut().enumerate() {
@@ -142,12 +142,14 @@ impl SensorManager {
                 Some(existing_suid) => *existing_suid,
                 None => {
                     let suid =
-                        suid::generate(&format!("{module_name}_{index}")).unwrap_or_else(|_| {
-                            error!(
-                                "suid already exists, module_name: {module_name}, index: {index}"
-                            );
-                            suid::generate_fixed("0xdeadbeef")
-                        });
+                        suid::generate(&format!("{}_{}_{}", module.name, module.hw_id, index))
+                            .unwrap_or_else(|_| {
+                                error!(
+                                    "suid already exists, module_name: {}, index: {}",
+                                    module.name, index
+                                );
+                                suid::generate_fixed("0xdeadbeef")
+                            });
                     sensor.set_suid(suid);
                     suid
                 }
@@ -164,7 +166,7 @@ impl SensorManager {
 
         self.sensors.extend(sensors);
         self.module_sensors
-            .insert(module_name.to_string(), suids.clone());
+            .insert(module.name.to_string(), suids.clone());
 
         suids
     }
@@ -228,13 +230,13 @@ impl SensorManager {
 pub trait SensorModuleOps: Sync {
     //TODO: maybe we should abstract a data struct contains more info
     // from the SensorModule
-    fn probe(&self, module_name: &str) -> bool {
+    fn install(&self, module_name: &str) -> bool {
         trace!("default detect: {module_name}");
         false
     }
 
-    fn remove(&self) {
-        trace!("default remove");
+    fn uninstall(&self) {
+        trace!("default uninstall");
     }
 
     fn create_sensor(&self, hw_id: u8) -> Vec<Sensor> {
@@ -257,11 +259,11 @@ pub struct SensorModule {
 
 impl SensorModule {
     pub fn probe(&self) -> bool {
-        self.ops.probe(self.name)
+        self.ops.install(self.name)
     }
 
     pub fn remove(&self) {
-        self.ops.remove();
+        self.ops.uninstall();
     }
 
     pub fn create_sensor(&self) -> Vec<Sensor> {
@@ -293,7 +295,7 @@ impl SensorHubFw {
             info!("Probing sensor: {}", module.name);
             if module.probe() {
                 let sensors = module.create_sensor();
-                let sensor_suids = self.sensor_manager.add_sensors(module.name, sensors);
+                let sensor_suids = self.sensor_manager.add_sensors(module, sensors);
                 self.sensor_instances.push(module.create_sensor_instance());
 
                 info!(

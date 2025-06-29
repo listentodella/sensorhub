@@ -65,7 +65,7 @@ struct ImuModuleOps {
 }
 
 impl SensorModuleOps for ImuModuleOps {
-    fn probe(&self, module_name: &str) -> bool {
+    fn install(&self, module_name: &str) -> bool {
         debug!("Probing IMU module: {module_name}");
         let mut imu = self.imu.lock().unwrap();
         imu.name = module_name.to_string();
@@ -75,7 +75,7 @@ impl SensorModuleOps for ImuModuleOps {
         imu.read_chip_id()
     }
 
-    fn remove(&self) {
+    fn uninstall(&self) {
         debug!("Removing IMU module: {}", self.imu.lock().unwrap().name);
     }
 
@@ -90,11 +90,13 @@ impl SensorModuleOps for ImuModuleOps {
         accel_sensor.set_attr(SensorAttr::Name("acc".to_string()));
         accel_sensor.set_attr(SensorAttr::Type(SensorType::Accelerometer));
         accel_sensor.set_attr(SensorAttr::Vendor("mVendor".to_string()));
+        accel_sensor.set_attr(SensorAttr::HwId(hw_id as u32));
 
         let mut gyro_sensor = Sensor::new();
         gyro_sensor.set_attr(SensorAttr::Name("gyro".to_string()));
         gyro_sensor.set_attr(SensorAttr::Type(SensorType::Gyroscope));
         gyro_sensor.set_attr(SensorAttr::Vendor("mVendor".to_string()));
+        gyro_sensor.set_attr(SensorAttr::HwId(hw_id as u32));
 
         vec![accel_sensor, gyro_sensor]
     }
@@ -123,7 +125,7 @@ register_sensor! {
 
 register_sensor! {
     SensorModule {
-        name: "mVendor-0001",
+        name: "mVendor-0000",
         hw_id: 1,
         sub_sensor: 2,
         ops: &IMU_MODULE_OPS,
